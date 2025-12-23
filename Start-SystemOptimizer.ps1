@@ -520,6 +520,126 @@ $script:FunctionModuleMap = @{
     'Protect-Privacy' = 'Bloatware'
 }
 
+# ============================================================================
+# OPTIMIZATION STATUS DETECTION
+# ============================================================================
+# Cache for optimization status (refreshed each menu display)
+$script:OptimizationStatus = @{}
+
+function Get-OptimizationStatus {
+    <#
+    .SYNOPSIS
+        Detect which optimizations have been applied by checking system state
+    #>
+    [CmdletBinding()]
+    param([switch]$Force)
+    
+    # Use cache if available and not forced refresh
+    if ($script:OptimizationStatus.Count -gt 0 -and -not $Force) {
+        return $script:OptimizationStatus
+    }
+    
+    $status = @{}
+    
+    # Telemetry - Check DiagTrack service and key registry
+    try {
+        $diagTrack = Get-Service -Name 'DiagTrack' -ErrorAction SilentlyContinue
+        $telemetryReg = Get-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -ErrorAction SilentlyContinue
+        $status['Disable-Telemetry'] = ($diagTrack.StartType -eq 'Disabled') -or ($telemetryReg.AllowTelemetry -eq 0)
+    } catch { $status['Disable-Telemetry'] = $false }
+    
+    # Services - Check if common optimization targets are disabled
+    try {
+        $svcTargets = @('DiagTrack', 'dmwappushservice', 'SysMain', 'WSearch')
+        $disabledCount = 0
+        foreach ($svc in $svcTargets) {
+            $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
+            if ($s -and $s.StartType -eq 'Disabled') { $disabledCount++ }
+        }
+        $status['Show-ServicesMenu'] = $disabledCount -ge 2
+    } catch { $status['Show-ServicesMenu'] = $false }
+    
+    # Bloatware - Check if common bloat apps are removed
+    try {
+        $bloatApps = @('Microsoft.Xbox', 'Microsoft.ZuneMusic', 'Clipchamp')
+        $foundCount = 0
+        foreach ($app in $bloatApps) {
+            if (Get-AppxPackage -Name "*$app*" -ErrorAction SilentlyContinue) { $foundCount++ }
+        }
+        $status['DebloatBlacklist'] = $foundCount -eq 0
+    } catch { $status['DebloatBlacklist'] = $false }
+    
+    # Scheduled Tasks - Check if telemetry tasks are disabled
+    try {
+        $taskTargets = @('\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser',
+                        '\Microsoft\Windows\Customer Experience Improvement Program\Consolidator')
+        $disabledTasks = 0
+        foreach ($taskPath in $taskTargets) {
+            $parts = $taskPath -split '\\'
+            $taskName = $parts[-1]
+            $path = ($parts[0..($parts.Length-2)] -join '\') + '\'
+            $task = Get-ScheduledTask -TaskPath $path -TaskName $taskName -ErrorAction SilentlyContinue
+            if ($task -and $task.State -eq 'Disabled') { $disabledTasks++ }
+        }
+        $status['Disable-ScheduledTasks'] = $disabledTasks -ge 1
+    } catch { $status['Disable-ScheduledTasks'] = $false }
+    
+    # Registry Optimizations - Check key performance tweaks
+    try {
+        $menuDelay = Get-ItemProperty "HKCU:\Control Panel\Desktop" -Name "MenuShowDelay" -ErrorAction SilentlyContinue
+        $gameBar = Get-ItemProperty "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -Name "AppCaptureEnabled" -ErrorAction SilentlyContinue
+        $status['Set-RegistryOptimizations'] = ($menuDelay.MenuShowDelay -eq '0') -or ($gameBar.AppCaptureEnabled -eq 0)
+    } catch { $status['Set-RegistryOptimizations'] = $false }
+    
+    # VBS - Check if VBS/Memory Integrity is disabled
+    try {
+        $vbs = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -ErrorAction SilentlyContinue
+        $hvci = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -ErrorAction SilentlyContinue
+        $status['Disable-VBS'] = ($vbs.EnableVirtualizationBasedSecurity -eq 0) -or ($hvci.Enabled -eq 0)
+    } catch { $status['Disable-VBS'] = $false }
+    
+    # Network - Check TCP optimizations
+    try {
+        $nagle = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "TcpNoDelay" -ErrorAction SilentlyContinue
+        $status['Set-NetworkOptimizations'] = $nagle.TcpNoDelay -eq 1
+    } catch { $status['Set-NetworkOptimizations'] = $false }
+    
+    # OneDrive - Check if OneDrive is installed
+    try {
+        $oneDrivePath = "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe"
+        $status['Remove-OneDrive'] = -not (Test-Path $oneDrivePath)
+    } catch { $status['Remove-OneDrive'] = $false }
+    
+    # Power Plan - Check if High Performance is active
+    try {
+        $activePlan = powercfg /getactivescheme 2>$null
+        $status['Set-PowerPlan'] = $activePlan -match '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c|e9a42b02-d5df-448d-aa00-03f14749eb61'
+    } catch { $status['Set-PowerPlan'] = $false }
+    
+    # Privacy - Check advertising ID
+    try {
+        $adId = Get-ItemProperty "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name "Enabled" -ErrorAction SilentlyContinue
+        $status['Start-DISMStyleTweaks'] = $adId.Enabled -eq 0
+    } catch { $status['Start-DISMStyleTweaks'] = $false }
+    
+    $script:OptimizationStatus = $status
+    return $status
+}
+
+function Test-OptimizationApplied {
+    <#
+    .SYNOPSIS
+        Check if a specific optimization has been applied
+    #>
+    param([string]$FunctionName)
+    
+    $status = Get-OptimizationStatus
+    if ($status.ContainsKey($FunctionName)) {
+        return $status[$FunctionName]
+    }
+    return $false
+}
+
 function Test-FunctionAvailable {
     param([string]$FunctionName)
     return [bool](Get-Command $FunctionName -ErrorAction SilentlyContinue)
@@ -543,13 +663,36 @@ function Write-MenuItem {
     )
     
     $available = Test-FunctionAvailable $FunctionName
-    $numColor = if ($available) { 'Cyan' } else { 'DarkGray' }
-    $textColor = if ($available) { 'White' } else { 'DarkGray' }
+    $applied = Test-OptimizationApplied $FunctionName
+    
+    # Determine colors and markers
+    if (-not $available) {
+        # Module not loaded
+        $numColor = 'DarkGray'
+        $textColor = 'DarkGray'
+        $marker = ' [X]'
+        $statusIndicator = ''
+    } elseif ($applied) {
+        # Optimization already applied
+        $numColor = 'Green'
+        $textColor = 'Green'
+        $marker = ''
+        $statusIndicator = ' [OK]'
+    } else {
+        # Available but not applied
+        $numColor = 'Cyan'
+        $textColor = 'White'
+        $marker = ''
+        $statusIndicator = ''
+    }
+    
     $descColor = 'DarkGray'
-    $marker = if ($available) { '' } else { ' [X]' }
     
     Write-Host "  [$Number]" -ForegroundColor $numColor -NoNewline
     Write-Host " $Text$marker" -ForegroundColor $textColor -NoNewline
+    if ($statusIndicator) {
+        Write-Host $statusIndicator -ForegroundColor Green -NoNewline
+    }
     Write-Host " - $Description" -ForegroundColor $descColor
 }
 
@@ -767,6 +910,10 @@ function Get-QuickHardwareSummary {
 function Show-MainMenu {
     Set-ConsoleSize
     Clear-Host
+    
+    # Refresh optimization status cache for menu indicators
+    $null = Get-OptimizationStatus -Force
+    
     Write-Host ("=" * 85) -ForegroundColor Cyan
     Write-Host "  SYSTEM OPTIMIZER v$($Config.Version)" -ForegroundColor Yellow -NoNewline
     
@@ -885,7 +1032,10 @@ function Show-MainMenu {
     
     Write-Host "  Log: $LogFile" -ForegroundColor DarkGray
     Write-Host "  " -NoNewline
-    Write-Host "[X] = Module not loaded" -ForegroundColor DarkGray
+    Write-Host "[OK]" -ForegroundColor Green -NoNewline
+    Write-Host " = Applied  " -ForegroundColor DarkGray -NoNewline
+    Write-Host "[X]" -ForegroundColor DarkGray -NoNewline
+    Write-Host " = Module not loaded" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  [U] Check for Updates" -NoNewline
     if ($script:UpdateInfo.Available) {
