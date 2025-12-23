@@ -382,7 +382,8 @@ function Set-OptimizationProfile {
         [Parameter(Mandatory)]
         [string]$Name,
         [switch]$WhatIf,
-        [switch]$Force
+        [switch]$Force,
+        [switch]$SkipSnapshot
     )
 
     $profileData = Get-Profile -Name $Name
@@ -417,12 +418,19 @@ function Set-OptimizationProfile {
         }
     }
 
+    # Take before snapshot for comparison (if Rollback module available)
+    $beforeSnapshot = $null
+    if (-not $SkipSnapshot -and (Get-Command 'New-FullSystemSnapshot' -ErrorAction SilentlyContinue)) {
+        Write-Host ""
+        $beforeSnapshot = New-FullSystemSnapshot -Type "Before" -Save
+    }
+
     $actions = $profileData.Actions
     $results = @{ Success = 0; Skipped = 0; Failed = 0 }
 
     # Start rollback session if available
-    if (Get-Command 'Start-RollbackSession' -ErrorAction SilentlyContinue) {
-        Start-RollbackSession -Name "Profile_$Name"
+    if (Get-Command 'Start-TrackedOperation' -ErrorAction SilentlyContinue) {
+        Start-TrackedOperation -Name "Profile_$Name"
     }
 
     Write-Host ""
@@ -630,8 +638,8 @@ function Set-OptimizationProfile {
     }
 
     # End rollback session
-    if (Get-Command 'Stop-RollbackSession' -ErrorAction SilentlyContinue) {
-        Stop-RollbackSession
+    if (Get-Command 'Stop-TrackedOperation' -ErrorAction SilentlyContinue) {
+        Stop-TrackedOperation
     }
 
     # Save active profile
@@ -643,6 +651,34 @@ function Set-OptimizationProfile {
     Write-Host "  PROFILE APPLIED: $($profileData.Name)" -ForegroundColor Green
     Write-Host "  Success: $($results.Success) | Skipped: $($results.Skipped) | Failed: $($results.Failed)" -ForegroundColor Gray
     Write-Host ("=" * 65) -ForegroundColor Cyan
+
+    # Offer to save for post-reboot comparison and generate report
+    if ($beforeSnapshot -and (Get-Command 'Save-PendingComparison' -ErrorAction SilentlyContinue)) {
+        Write-Host ""
+        Write-Host "  A reboot is recommended to complete some optimizations." -ForegroundColor Yellow
+        Write-Host ""
+        $saveResponse = Read-Host "  Save snapshot for post-reboot comparison? (Y/n)"
+        
+        if ($saveResponse -notmatch '^[Nn]') {
+            Save-PendingComparison -BeforeSnapshot $beforeSnapshot -ProfileName $Name
+            
+            # Generate initial report
+            if (Get-Command 'New-OptimizationReport' -ErrorAction SilentlyContinue) {
+                New-OptimizationReport -BeforeSnapshot $beforeSnapshot -ProfileName $Name
+            }
+            
+            Write-Host ""
+            Write-Host "  After reboot, run System Optimizer to see the comparison." -ForegroundColor Cyan
+            Write-Host ""
+            
+            $rebootResponse = Read-Host "  Reboot now? (y/N)"
+            if ($rebootResponse -match '^[Yy]') {
+                Write-Host "  Rebooting in 5 seconds..." -ForegroundColor Yellow
+                Start-Sleep -Seconds 5
+                Restart-Computer -Force
+            }
+        }
+    }
 
     return $true
 }

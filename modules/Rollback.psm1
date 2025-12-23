@@ -1293,6 +1293,988 @@ function Compare-ServiceSnapshots {
     return $changes
 }
 
+# ============================================================================
+# FULL SYSTEM SNAPSHOT (Before/After Comparison System)
+# ============================================================================
+
+# Snapshot storage configuration
+$script:SnapshotDir = "$($RollbackConfig.RollbackDir)\Snapshots"
+$script:PendingComparisonFile = "$($RollbackConfig.RollbackDir)\pending_comparison.json"
+
+function Get-ScheduledTaskSnapshot {
+    <#
+    .SYNOPSIS
+        Take a snapshot of scheduled task states
+    .DESCRIPTION
+        Captures non-Microsoft scheduled tasks for comparison
+    #>
+    [CmdletBinding()]
+    param(
+        [switch]$IncludeSystemTasks
+    )
+
+    $snapshot = @{}
+
+    try {
+        $filter = if ($IncludeSystemTasks) {
+            { $true }
+        } else {
+            # Exclude most Microsoft system tasks, keep user-relevant ones
+            { $_.TaskPath -notmatch '^\\Microsoft\\Windows\\(Defrag|DiskCleanup|Maintenance|Servicing|Setup|Shell|SoftwareProtectionPlatform|Sysmain|Task Manager|Time|UpdateOrchestrator|Windows Defender|WindowsUpdate|WwanSvc)\\' }
+        }
+
+        $tasks = Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object $filter
+
+        foreach ($task in $tasks) {
+            $fullPath = "$($task.TaskPath)$($task.TaskName)"
+            $snapshot[$fullPath] = @{
+                TaskPath = $task.TaskPath
+                TaskName = $task.TaskName
+                State = $task.State.ToString()
+                Enabled = ($task.State -ne 'Disabled')
+                Description = $task.Description
+            }
+        }
+    } catch {
+        Write-Warning "Failed to get scheduled task snapshot: $($_.Exception.Message)"
+    }
+
+    return $snapshot
+}
+
+function Compare-ScheduledTaskSnapshots {
+    <#
+    .SYNOPSIS
+        Compare two scheduled task snapshots and return changes
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [hashtable]$Before,
+
+        [Parameter(Mandatory)]
+        [hashtable]$After
+    )
+
+    $changes = @()
+
+    foreach ($path in $After.Keys) {
+        if ($Before.ContainsKey($path)) {
+            if ($Before[$path].State -ne $After[$path].State) {
+                $changes += @{
+                    TaskPath = $After[$path].TaskPath
+                    TaskName = $After[$path].TaskName
+                    FullPath = $path
+                    OldState = $Before[$path].State
+                    NewState = $After[$path].State
+                }
+            }
+        }
+    }
+
+    return $changes
+}
+
+function Get-AppSnapshot {
+    <#
+    .SYNOPSIS
+        Take a snapshot of installed UWP/Store apps
+    #>
+    [CmdletBinding()]
+    param()
+
+    $apps = @()
+
+    try {
+        $appxPackages = Get-AppxPackage -ErrorAction SilentlyContinue
+
+        foreach ($app in $appxPackages) {
+            $apps += @{
+                Name = $app.Name
+                Version = $app.Version
+                Publisher = $app.Publisher
+                PackageFullName = $app.PackageFullName
+                InstallLocation = $app.InstallLocation
+            }
+        }
+    } catch {
+        Write-Warning "Failed to get app snapshot: $($_.Exception.Message)"
+    }
+
+    return $apps
+}
+
+function Compare-AppSnapshots {
+    <#
+    .SYNOPSIS
+        Compare two app snapshots and return changes
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [array]$Before,
+
+        [Parameter(Mandatory)]
+        [array]$After
+    )
+
+    $changes = @{
+        Removed = @()
+        Added = @()
+        Updated = @()
+    }
+
+    $beforeNames = $Before | ForEach-Object { $_.Name }
+    $afterNames = $After | ForEach-Object { $_.Name }
+
+    # Find removed apps
+    foreach ($app in $Before) {
+        if ($app.Name -notin $afterNames) {
+            $changes.Removed += $app.Name
+        }
+    }
+
+    # Find added apps
+    foreach ($app in $After) {
+        if ($app.Name -notin $beforeNames) {
+            $changes.Added += $app.Name
+        }
+    }
+
+    # Find updated apps (version changed)
+    foreach ($afterApp in $After) {
+        $beforeApp = $Before | Where-Object { $_.Name -eq $afterApp.Name } | Select-Object -First 1
+        if ($beforeApp -and $beforeApp.Version -ne $afterApp.Version) {
+            $changes.Updated += @{
+                Name = $afterApp.Name
+                OldVersion = $beforeApp.Version
+                NewVersion = $afterApp.Version
+            }
+        }
+    }
+
+    return $changes
+}
+
+function New-FullSystemSnapshot {
+    <#
+    .SYNOPSIS
+        Create a comprehensive system snapshot for before/after comparison
+    .PARAMETER Type
+        "Before" or "After" to indicate snapshot purpose
+    .PARAMETER Save
+        If specified, saves snapshot to disk
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidateSet("Before", "After")]
+        [string]$Type = "Before",
+
+        [switch]$Save
+    )
+
+    Write-Host "  Taking system snapshot ($Type)..." -ForegroundColor Cyan
+
+    # Key registry paths to snapshot
+    $regPaths = @(
+        # Telemetry
+        "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection",
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection",
+        # Game Bar / DVR
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR",
+        "HKCU:\SOFTWARE\Microsoft\GameBar",
+        "HKCU:\System\GameConfigStore",
+        # Privacy
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo",
+        "HKCU:\SOFTWARE\Microsoft\InputPersonalization",
+        # Performance
+        "HKCU:\Control Panel\Desktop",
+        "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects",
+        "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
+        "HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers",
+        # Services (key ones)
+        "HKLM:\SYSTEM\CurrentControlSet\Services\DiagTrack",
+        "HKLM:\SYSTEM\CurrentControlSet\Services\dmwappushservice",
+        "HKLM:\SYSTEM\CurrentControlSet\Services\SysMain"
+    )
+
+    # Get hardware info if available
+    $hardware = $null
+    if (Get-Command 'Get-HardwareProfile' -ErrorAction SilentlyContinue) {
+        try {
+            $hardware = Get-HardwareProfile
+        } catch {
+            Write-Verbose "Hardware detection unavailable"
+        }
+    }
+
+    # Get memory usage
+    $os = Get-CimOrWmi -ClassName Win32_OperatingSystem
+    $memoryUsage = $null
+    if ($os) {
+        $totalMem = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
+        $freeMem = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
+        $memoryUsage = @{
+            Total_GB = $totalMem
+            Free_GB = $freeMem
+            Used_GB = [math]::Round($totalMem - $freeMem, 1)
+            UsedPercent = [math]::Round((($totalMem - $freeMem) / $totalMem) * 100, 0)
+        }
+    }
+
+    $snapshot = @{
+        Timestamp = Get-Date -Format "o"
+        Type = $Type
+        ComputerName = $env:COMPUTERNAME
+        WindowsBuild = $WinVersion.Build
+        Hardware = $hardware
+        MemoryUsage = $memoryUsage
+        Services = Get-ServiceSnapshot
+        Registry = Get-RegistrySnapshot -Paths $regPaths
+        Tasks = Get-ScheduledTaskSnapshot
+        Apps = Get-AppSnapshot
+        Counts = @{
+            Services = (Get-Service -ErrorAction SilentlyContinue).Count
+            RunningServices = (Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' }).Count
+            Tasks = (Get-ScheduledTask -ErrorAction SilentlyContinue).Count
+            EnabledTasks = (Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.State -ne 'Disabled' }).Count
+            Apps = (Get-AppxPackage -ErrorAction SilentlyContinue).Count
+        }
+    }
+
+    Write-Host "  Snapshot complete: $($snapshot.Counts.Services) services, $($snapshot.Counts.Tasks) tasks, $($snapshot.Counts.Apps) apps" -ForegroundColor Green
+
+    if ($Save) {
+        $path = Save-Snapshot -Snapshot $snapshot
+        Write-Host "  Saved to: $path" -ForegroundColor DarkGray
+    }
+
+    return $snapshot
+}
+
+function Save-Snapshot {
+    <#
+    .SYNOPSIS
+        Save a snapshot to disk
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [hashtable]$Snapshot
+    )
+
+    # Ensure directory exists
+    if (-not (Test-Path $script:SnapshotDir)) {
+        New-Item -ItemType Directory -Path $script:SnapshotDir -Force | Out-Null
+    }
+
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $type = $Snapshot.Type.ToLower()
+    $filename = "snapshot_${timestamp}_${type}.json"
+    $path = Join-Path $script:SnapshotDir $filename
+
+    $Snapshot | ConvertTo-Json -Depth 10 | Set-Content -Path $path -Encoding UTF8
+
+    return $path
+}
+
+function Get-LatestSnapshot {
+    <#
+    .SYNOPSIS
+        Get the most recent snapshot of a specific type
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidateSet("Before", "After", "Any")]
+        [string]$Type = "Any"
+    )
+
+    if (-not (Test-Path $script:SnapshotDir)) {
+        return $null
+    }
+
+    $pattern = switch ($Type) {
+        "Before" { "snapshot_*_before.json" }
+        "After" { "snapshot_*_after.json" }
+        "Any" { "snapshot_*.json" }
+    }
+
+    $latest = Get-ChildItem -Path $script:SnapshotDir -Filter $pattern -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+
+    if ($latest) {
+        try {
+            return Get-Content $latest.FullName -Raw | ConvertFrom-Json -AsHashtable
+        } catch {
+            # Fallback for older PowerShell
+            $json = Get-Content $latest.FullName -Raw | ConvertFrom-Json
+            return $json
+        }
+    }
+
+    return $null
+}
+
+function Compare-FullSnapshots {
+    <#
+    .SYNOPSIS
+        Compare two full system snapshots
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        $Before,
+
+        [Parameter(Mandatory)]
+        $After
+    )
+
+    # Handle PSCustomObject from JSON
+    $beforeServices = if ($Before.Services -is [hashtable]) { $Before.Services } else { 
+        $ht = @{}
+        $Before.Services.PSObject.Properties | ForEach-Object { $ht[$_.Name] = $_.Value }
+        $ht
+    }
+    $afterServices = if ($After.Services -is [hashtable]) { $After.Services } else {
+        $ht = @{}
+        $After.Services.PSObject.Properties | ForEach-Object { $ht[$_.Name] = $_.Value }
+        $ht
+    }
+
+    $beforeRegistry = if ($Before.Registry -is [hashtable]) { $Before.Registry } else {
+        $ht = @{}
+        $Before.Registry.PSObject.Properties | ForEach-Object { $ht[$_.Name] = $_.Value }
+        $ht
+    }
+    $afterRegistry = if ($After.Registry -is [hashtable]) { $After.Registry } else {
+        $ht = @{}
+        $After.Registry.PSObject.Properties | ForEach-Object { $ht[$_.Name] = $_.Value }
+        $ht
+    }
+
+    $beforeTasks = if ($Before.Tasks -is [hashtable]) { $Before.Tasks } else {
+        $ht = @{}
+        $Before.Tasks.PSObject.Properties | ForEach-Object { $ht[$_.Name] = $_.Value }
+        $ht
+    }
+    $afterTasks = if ($After.Tasks -is [hashtable]) { $After.Tasks } else {
+        $ht = @{}
+        $After.Tasks.PSObject.Properties | ForEach-Object { $ht[$_.Name] = $_.Value }
+        $ht
+    }
+
+    $beforeApps = if ($Before.Apps -is [array]) { $Before.Apps } else { @($Before.Apps) }
+    $afterApps = if ($After.Apps -is [array]) { $After.Apps } else { @($After.Apps) }
+
+    return @{
+        BeforeTimestamp = $Before.Timestamp
+        AfterTimestamp = $After.Timestamp
+        Services = Compare-ServiceSnapshots -Before $beforeServices -After $afterServices
+        Registry = Compare-RegistrySnapshots -Before $beforeRegistry -After $afterRegistry
+        Tasks = Compare-ScheduledTaskSnapshots -Before $beforeTasks -After $afterTasks
+        Apps = Compare-AppSnapshots -Before $beforeApps -After $afterApps
+        CountChanges = @{
+            ServicesBefore = $Before.Counts.RunningServices
+            ServicesAfter = $After.Counts.RunningServices
+            TasksBefore = $Before.Counts.EnabledTasks
+            TasksAfter = $After.Counts.EnabledTasks
+            AppsBefore = $Before.Counts.Apps
+            AppsAfter = $After.Counts.Apps
+        }
+        MemoryChange = @{
+            UsedBefore_GB = $Before.MemoryUsage.Used_GB
+            UsedAfter_GB = $After.MemoryUsage.Used_GB
+            Difference_GB = [math]::Round($After.MemoryUsage.Used_GB - $Before.MemoryUsage.Used_GB, 2)
+        }
+    }
+}
+
+# ============================================================================
+# PENDING COMPARISON (Reboot Handling)
+# ============================================================================
+
+function Save-PendingComparison {
+    <#
+    .SYNOPSIS
+        Save snapshot and session info for post-reboot comparison
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [hashtable]$BeforeSnapshot,
+
+        [string]$ProfileName
+    )
+
+    $pending = @{
+        BeforeSnapshot = $BeforeSnapshot
+        SessionId = if ($RollbackConfig.CurrentSession) { $RollbackConfig.CurrentSession.Id } else { $null }
+        ProfileApplied = $ProfileName
+        Timestamp = Get-Date -Format "o"
+        SessionSummary = Get-SessionSummary
+    }
+
+    # Ensure directory exists
+    $dir = Split-Path $script:PendingComparisonFile -Parent
+    if (-not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
+
+    $pending | ConvertTo-Json -Depth 15 | Set-Content -Path $script:PendingComparisonFile -Encoding UTF8
+
+    Write-Verbose "Pending comparison saved for post-reboot"
+    return $script:PendingComparisonFile
+}
+
+function Test-PendingComparison {
+    <#
+    .SYNOPSIS
+        Check if there's a pending comparison from before reboot
+    #>
+    [CmdletBinding()]
+    param()
+
+    return Test-Path $script:PendingComparisonFile
+}
+
+function Get-PendingComparison {
+    <#
+    .SYNOPSIS
+        Get the pending comparison data
+    #>
+    [CmdletBinding()]
+    param()
+
+    if (-not (Test-Path $script:PendingComparisonFile)) {
+        return $null
+    }
+
+    try {
+        $content = Get-Content $script:PendingComparisonFile -Raw
+        try {
+            return $content | ConvertFrom-Json -AsHashtable
+        } catch {
+            return $content | ConvertFrom-Json
+        }
+    } catch {
+        Write-Warning "Failed to read pending comparison: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Remove-PendingComparison {
+    <#
+    .SYNOPSIS
+        Remove the pending comparison file after processing
+    #>
+    [CmdletBinding()]
+    param()
+
+    if (Test-Path $script:PendingComparisonFile) {
+        Remove-Item $script:PendingComparisonFile -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Get-SessionSummary {
+    <#
+    .SYNOPSIS
+        Get summary of current rollback session changes
+    #>
+    [CmdletBinding()]
+    param()
+
+    if (-not $RollbackConfig.CurrentSession) {
+        return @{
+            SessionId = $null
+            TotalChanges = 0
+            RegistryChanges = 0
+            ServiceChanges = 0
+            TaskChanges = 0
+        }
+    }
+
+    return @{
+        SessionId = $RollbackConfig.CurrentSession.Id
+        StartTime = $RollbackConfig.CurrentSession.StartTime
+        RegistryChanges = $RollbackConfig.CurrentSession.Changes.Registry.Count
+        ServiceChanges = $RollbackConfig.CurrentSession.Changes.Services.Count
+        TaskChanges = $RollbackConfig.CurrentSession.Changes.ScheduledTasks.Count
+        TotalChanges = (
+            $RollbackConfig.CurrentSession.Changes.Registry.Count +
+            $RollbackConfig.CurrentSession.Changes.Services.Count +
+            $RollbackConfig.CurrentSession.Changes.ScheduledTasks.Count
+        )
+    }
+}
+
+# ============================================================================
+# COMPARISON DISPLAY
+# ============================================================================
+
+function Show-SnapshotComparison {
+    <#
+    .SYNOPSIS
+        Display a formatted comparison between two snapshots
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        $Before,
+
+        [Parameter(Mandatory)]
+        $After
+    )
+
+    $comparison = Compare-FullSnapshots -Before $Before -After $After
+
+    Write-Host ""
+    Write-Host ("=" * 65) -ForegroundColor Cyan
+    Write-Host "  BEFORE/AFTER COMPARISON" -ForegroundColor Yellow
+    Write-Host ("=" * 65) -ForegroundColor Cyan
+    Write-Host ""
+
+    # Counts summary
+    Write-Host "  System Counts:" -ForegroundColor Gray
+    $svcDiff = $comparison.CountChanges.ServicesAfter - $comparison.CountChanges.ServicesBefore
+    $taskDiff = $comparison.CountChanges.TasksAfter - $comparison.CountChanges.TasksBefore
+    $appDiff = $comparison.CountChanges.AppsAfter - $comparison.CountChanges.AppsBefore
+
+    $svcColor = if ($svcDiff -lt 0) { 'Green' } elseif ($svcDiff -gt 0) { 'Yellow' } else { 'Gray' }
+    $taskColor = if ($taskDiff -lt 0) { 'Green' } elseif ($taskDiff -gt 0) { 'Yellow' } else { 'Gray' }
+    $appColor = if ($appDiff -lt 0) { 'Green' } elseif ($appDiff -gt 0) { 'Yellow' } else { 'Gray' }
+
+    Write-Host "    Running Services: $($comparison.CountChanges.ServicesBefore) -> $($comparison.CountChanges.ServicesAfter) " -NoNewline
+    Write-Host "($svcDiff)" -ForegroundColor $svcColor
+    Write-Host "    Enabled Tasks:    $($comparison.CountChanges.TasksBefore) -> $($comparison.CountChanges.TasksAfter) " -NoNewline
+    Write-Host "($taskDiff)" -ForegroundColor $taskColor
+    Write-Host "    Installed Apps:   $($comparison.CountChanges.AppsBefore) -> $($comparison.CountChanges.AppsAfter) " -NoNewline
+    Write-Host "($appDiff)" -ForegroundColor $appColor
+
+    # Memory
+    if ($comparison.MemoryChange.Difference_GB) {
+        $memColor = if ($comparison.MemoryChange.Difference_GB -lt 0) { 'Green' } else { 'Yellow' }
+        Write-Host "    Memory Used:      $($comparison.MemoryChange.UsedBefore_GB) GB -> $($comparison.MemoryChange.UsedAfter_GB) GB " -NoNewline
+        Write-Host "($($comparison.MemoryChange.Difference_GB) GB)" -ForegroundColor $memColor
+    }
+
+    Write-Host ""
+
+    # Service changes
+    if ($comparison.Services.Count -gt 0) {
+        Write-Host "  Service Changes ($($comparison.Services.Count)):" -ForegroundColor Yellow
+        $comparison.Services | Select-Object -First 10 | ForEach-Object {
+            Write-Host "    $($_.ServiceName): $($_.OldStartType) -> $($_.NewStartType)" -ForegroundColor Gray
+        }
+        if ($comparison.Services.Count -gt 10) {
+            Write-Host "    ... and $($comparison.Services.Count - 10) more" -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
+
+    # Task changes
+    if ($comparison.Tasks.Count -gt 0) {
+        Write-Host "  Task Changes ($($comparison.Tasks.Count)):" -ForegroundColor Yellow
+        $comparison.Tasks | Select-Object -First 5 | ForEach-Object {
+            Write-Host "    $($_.TaskName): $($_.OldState) -> $($_.NewState)" -ForegroundColor Gray
+        }
+        if ($comparison.Tasks.Count -gt 5) {
+            Write-Host "    ... and $($comparison.Tasks.Count - 5) more" -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
+
+    # App changes
+    if ($comparison.Apps.Removed.Count -gt 0) {
+        Write-Host "  Apps Removed ($($comparison.Apps.Removed.Count)):" -ForegroundColor Green
+        $comparison.Apps.Removed | Select-Object -First 10 | ForEach-Object {
+            Write-Host "    - $_" -ForegroundColor Gray
+        }
+        if ($comparison.Apps.Removed.Count -gt 10) {
+            Write-Host "    ... and $($comparison.Apps.Removed.Count - 10) more" -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
+
+    # Registry changes
+    $regChanges = @($comparison.Registry).Count
+    if ($regChanges -gt 0) {
+        Write-Host "  Registry Changes: $regChanges values modified" -ForegroundColor Yellow
+        Write-Host ""
+    }
+
+    Write-Host ("=" * 65) -ForegroundColor Cyan
+
+    return $comparison
+}
+
+# ============================================================================
+# REPORT GENERATION
+# ============================================================================
+
+function New-OptimizationReport {
+    <#
+    .SYNOPSIS
+        Generate a desktop report summarizing optimizations
+    .PARAMETER BeforeSnapshot
+        The "before" system snapshot
+    .PARAMETER AfterSnapshot
+        Optional "after" snapshot for comparison
+    .PARAMETER ProfileName
+        Name of the profile that was applied
+    .PARAMETER OutputPath
+        Custom output path (defaults to Desktop)
+    #>
+    [CmdletBinding()]
+    param(
+        $BeforeSnapshot,
+        $AfterSnapshot,
+        [string]$ProfileName,
+        [string]$OutputPath
+    )
+
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $sessionSummary = Get-SessionSummary
+
+    if (-not $OutputPath) {
+        $OutputPath = "$env:USERPROFILE\Desktop\System_Optimizer_Report.txt"
+    }
+
+    # Build hardware summary
+    $hwSummary = "Hardware detection unavailable"
+    if ($BeforeSnapshot -and $BeforeSnapshot.Hardware) {
+        $hwSummary = Format-HardwareSummaryText -Hardware $BeforeSnapshot.Hardware
+    }
+
+    # Build comparison section if we have after snapshot
+    $comparisonSection = ""
+    if ($AfterSnapshot) {
+        $comparison = Compare-FullSnapshots -Before $BeforeSnapshot -After $AfterSnapshot
+
+        $svcDiff = $comparison.CountChanges.ServicesAfter - $comparison.CountChanges.ServicesBefore
+        $taskDiff = $comparison.CountChanges.TasksAfter - $comparison.CountChanges.TasksBefore
+        $appDiff = $comparison.CountChanges.AppsAfter - $comparison.CountChanges.AppsBefore
+
+        $comparisonSection = @"
+
+================================================================================
+BEFORE/AFTER COMPARISON
+================================================================================
+Running Services: $($comparison.CountChanges.ServicesBefore) -> $($comparison.CountChanges.ServicesAfter) ($svcDiff)
+Enabled Tasks:    $($comparison.CountChanges.TasksBefore) -> $($comparison.CountChanges.TasksAfter) ($taskDiff)
+Installed Apps:   $($comparison.CountChanges.AppsBefore) -> $($comparison.CountChanges.AppsAfter) ($appDiff)
+Memory Used:      $($comparison.MemoryChange.UsedBefore_GB) GB -> $($comparison.MemoryChange.UsedAfter_GB) GB ($($comparison.MemoryChange.Difference_GB) GB)
+
+Service Changes: $($comparison.Services.Count)
+Task Changes:    $($comparison.Tasks.Count)
+Apps Removed:    $($comparison.Apps.Removed.Count)
+Registry Changes: $(@($comparison.Registry).Count)
+"@
+
+        # Add removed apps list if any
+        if ($comparison.Apps.Removed.Count -gt 0) {
+            $comparisonSection += "`n`nApps Removed:`n"
+            $comparison.Apps.Removed | ForEach-Object {
+                $comparisonSection += "  - $_`n"
+            }
+        }
+    } else {
+        $comparisonSection = @"
+
+================================================================================
+REBOOT REQUIRED
+================================================================================
+A reboot is recommended to complete the optimizations.
+
+After reboot, run System Optimizer again to see the before/after comparison.
+The comparison will show actual changes to services, tasks, and memory usage.
+"@
+    }
+
+    # Build changes applied section
+    $changesSection = ""
+    if ($sessionSummary.TotalChanges -gt 0) {
+        $changesSection = @"
+
+================================================================================
+CHANGES APPLIED (This Session)
+================================================================================
+Registry Changes:  $($sessionSummary.RegistryChanges)
+Service Changes:   $($sessionSummary.ServiceChanges)
+Task Changes:      $($sessionSummary.TaskChanges)
+---------------------------------
+Total Changes:     $($sessionSummary.TotalChanges)
+"@
+    }
+
+    # Build expected improvements section
+    $expectedSection = ""
+    if ($ProfileName) {
+        $expectedSection = Get-ExpectedImprovementsText -ProfileName $ProfileName
+    }
+
+    # Get log file path
+    $logPath = "Not available"
+    if (Get-Command 'Get-OptLogPath' -ErrorAction SilentlyContinue) {
+        $logPath = Get-OptLogPath
+        if (-not $logPath) { $logPath = "C:\System_Optimizer\Logs\" }
+    }
+
+    # Build full report
+    $report = @"
+================================================================================
+SYSTEM OPTIMIZER - OPTIMIZATION REPORT
+================================================================================
+Generated: $timestamp
+Computer:  $env:COMPUTERNAME
+Profile:   $(if ($ProfileName) { $ProfileName } else { "Custom/Manual" })
+
+================================================================================
+HARDWARE SUMMARY
+================================================================================
+$hwSummary
+$changesSection
+$expectedSection
+$comparisonSection
+
+================================================================================
+NEXT STEPS
+================================================================================
+1. Review this report
+2. Reboot your computer (if not already done)
+3. Run System Optimizer -> Verify Status to confirm changes
+4. Check the rollback menu if you need to undo any changes
+
+================================================================================
+FILES
+================================================================================
+Log File:     $logPath
+Rollback Dir: $($RollbackConfig.RollbackDir)
+================================================================================
+"@
+
+    # Write report
+    $report | Out-File -FilePath $OutputPath -Encoding UTF8 -Force
+
+    Write-Host ""
+    Write-Host "Report saved to: $OutputPath" -ForegroundColor Green
+
+    return $OutputPath
+}
+
+function Format-HardwareSummaryText {
+    <#
+    .SYNOPSIS
+        Format hardware profile as plain text for report
+    #>
+    [CmdletBinding()]
+    param($Hardware)
+
+    if (-not $Hardware) { return "Hardware detection unavailable" }
+
+    $lines = @()
+
+    # CPU
+    if ($Hardware.CPU) {
+        $cpu = $Hardware.CPU
+        $cpuName = if ($cpu.Name) { $cpu.Name } else { "Unknown CPU" }
+        $lines += "CPU:  $cpuName"
+        
+        $cores = if ($cpu.Cores) { $cpu.Cores } else { "?" }
+        $threads = if ($cpu.Threads) { $cpu.Threads } else { "?" }
+        $lines += "      $cores cores / $threads threads"
+        
+        if ($cpu.Generation) {
+            $lines += "      $($cpu.Generation)"
+        }
+        if ($cpu.IsHybrid) {
+            $pCores = if ($cpu.PCores) { $cpu.PCores } else { "?" }
+            $eCores = if ($cpu.ECores) { $cpu.ECores } else { "?" }
+            $lines += "      Hybrid: $pCores P-cores + $eCores E-cores"
+        }
+    }
+
+    # GPU
+    if ($Hardware.PrimaryGPU) {
+        $gpu = $Hardware.PrimaryGPU
+        $gpuName = if ($gpu.Name) { $gpu.Name } else { "Unknown GPU" }
+        $gpuType = if ($gpu.IsDedicated) { "[Dedicated]" } else { "[Integrated]" }
+        $lines += ""
+        $lines += "GPU:  $gpuName $gpuType"
+        if ($gpu.VRAM_GB) {
+            $lines += "      VRAM: $($gpu.VRAM_GB) GB"
+        }
+        if ($gpu.Series) {
+            $lines += "      $($gpu.Series)"
+        }
+    }
+
+    # Memory
+    if ($Hardware.Memory) {
+        $mem = $Hardware.Memory
+        $total = if ($mem.Total_GB) { $mem.Total_GB } else { "?" }
+        $type = if ($mem.Type) { $mem.Type } else { "DDR" }
+        $speed = if ($mem.ConfiguredSpeed_MHz) { $mem.ConfiguredSpeed_MHz } else { "?" }
+        $lines += ""
+        $lines += "RAM:  $total GB $type @ $speed MHz"
+        if ($mem.ChannelMode) {
+            $lines += "      $($mem.ChannelMode)"
+        }
+    }
+
+    # Storage
+    if ($Hardware.BootDrive) {
+        $drive = $Hardware.BootDrive
+        $driveType = if ($drive.Type) { $drive.Type } else { "Unknown" }
+        $free = if ($drive.Free_GB) { $drive.Free_GB } else { "?" }
+        $total = if ($drive.Size_GB) { $drive.Size_GB } else { "?" }
+        $lines += ""
+        $lines += "Boot: $driveType - $free GB free / $total GB total"
+        if ($drive.HealthStatus) {
+            $lines += "      Health: $($drive.HealthStatus)"
+        }
+    }
+
+    return $lines -join "`n"
+}
+
+function Get-ExpectedImprovementsText {
+    <#
+    .SYNOPSIS
+        Get expected improvements text based on profile
+    #>
+    [CmdletBinding()]
+    param([string]$ProfileName)
+
+    $improvements = switch ($ProfileName) {
+        "Gaming" {
+            @(
+                "Boot time: ~10-20% faster",
+                "RAM usage: ~300-500MB reduction",
+                "Gaming FPS: +5-10% (if VBS disabled)",
+                "Background CPU: Significantly reduced",
+                "Input latency: Reduced (services optimized)"
+            )
+        }
+        "Developer" {
+            @(
+                "Reduced telemetry overhead",
+                "Privacy improvements",
+                "Bloatware removed",
+                "Long paths enabled"
+            )
+        }
+        "LowSpec" {
+            @(
+                "Boot time: ~20-30% faster",
+                "RAM usage: ~500MB+ reduction",
+                "CPU usage: Significantly reduced",
+                "Visual effects disabled for performance"
+            )
+        }
+        "Laptop" {
+            @(
+                "Battery life: Extended",
+                "Background activity: Reduced",
+                "Telemetry disabled",
+                "Bloatware removed"
+            )
+        }
+        "ContentCreator" {
+            @(
+                "GPU scheduling optimized",
+                "Low latency audio enabled",
+                "Large system cache enabled",
+                "Background activity reduced"
+            )
+        }
+        "Office" {
+            @(
+                "Game Bar disabled",
+                "Minimal changes for stability"
+            )
+        }
+        default {
+            @(
+                "Various optimizations applied",
+                "Check session summary for details"
+            )
+        }
+    }
+
+    $text = @"
+
+================================================================================
+EXPECTED IMPROVEMENTS ($ProfileName Profile)
+================================================================================
+"@
+
+    foreach ($item in $improvements) {
+        $text += "`n  * $item"
+    }
+
+    $text += @"
+
+`nNote: Actual improvements depend on your hardware and current system state.
+Some changes require a reboot to take full effect.
+"@
+
+    return $text
+}
+
+function Get-QuickHardwareLine {
+    <#
+    .SYNOPSIS
+        Get a one-line hardware summary for menu headers
+    #>
+    [CmdletBinding()]
+    param()
+
+    $parts = @()
+
+    try {
+        if (Get-Command 'Get-HardwareProfile' -ErrorAction SilentlyContinue) {
+            $hw = Get-HardwareProfile
+
+            if ($hw.CPU) {
+                $cpuShort = $hw.CPU.Name -replace 'Intel\(R\) Core\(TM\) ', '' -replace 'AMD ', '' -replace ' Processor', '' -replace '\s+', ' '
+                $cpuShort = $cpuShort.Trim()
+                if ($cpuShort.Length -gt 20) {
+                    $cpuShort = $cpuShort.Substring(0, 17) + "..."
+                }
+                $parts += $cpuShort
+            }
+
+            if ($hw.PrimaryGPU) {
+                $gpuShort = $hw.PrimaryGPU.Name -replace 'NVIDIA GeForce ', '' -replace 'AMD Radeon ', '' -replace 'Intel\(R\) ', ''
+                if ($hw.PrimaryGPU.VRAM_GB) {
+                    $gpuShort += " $($hw.PrimaryGPU.VRAM_GB)GB"
+                }
+                if ($gpuShort.Length -gt 20) {
+                    $gpuShort = $gpuShort.Substring(0, 17) + "..."
+                }
+                $parts += $gpuShort
+            }
+
+            if ($hw.Memory) {
+                $parts += "$($hw.Memory.Total_GB)GB $($hw.Memory.Type)"
+            }
+
+            if ($hw.BootDrive) {
+                $parts += "$($hw.BootDrive.Type) $($hw.BootDrive.Free_GB)GB free"
+            }
+        }
+    } catch {
+        # Silently fail
+    }
+
+    if ($parts.Count -eq 0) {
+        return $null
+    }
+
+    return $parts -join " | "
+}
+
 # Update exports
 Export-ModuleMember -Function @(
     # Initialization
@@ -1312,6 +2294,7 @@ Export-ModuleMember -Function @(
     # Session management
     'Save-RollbackSession',
     'Export-RollbackScript',
+    'Get-SessionSummary',
 
     # History & UI
     'Get-RollbackHistory',
@@ -1323,6 +2306,7 @@ Export-ModuleMember -Function @(
     # Helpers
     'Get-WindowsVersionInfo',
     'Test-CommandAvailable',
+    'Get-QuickHardwareLine',
 
     # Bulk tracking wrappers
     'Start-TrackedOperation',
@@ -1330,9 +2314,31 @@ Export-ModuleMember -Function @(
     'Add-RegistryChangeToSession',
     'Add-ServiceChangeToSession',
 
-    # Snapshot-based tracking
+    # Snapshot-based tracking (existing)
     'Get-RegistrySnapshot',
     'Compare-RegistrySnapshots',
     'Get-ServiceSnapshot',
-    'Compare-ServiceSnapshots'
+    'Compare-ServiceSnapshots',
+
+    # Full system snapshots (NEW)
+    'Get-ScheduledTaskSnapshot',
+    'Compare-ScheduledTaskSnapshots',
+    'Get-AppSnapshot',
+    'Compare-AppSnapshots',
+    'New-FullSystemSnapshot',
+    'Save-Snapshot',
+    'Get-LatestSnapshot',
+    'Compare-FullSnapshots',
+    'Show-SnapshotComparison',
+
+    # Pending comparison / reboot handling (NEW)
+    'Save-PendingComparison',
+    'Test-PendingComparison',
+    'Get-PendingComparison',
+    'Remove-PendingComparison',
+
+    # Report generation (NEW)
+    'New-OptimizationReport',
+    'Format-HardwareSummaryText',
+    'Get-ExpectedImprovementsText'
 )

@@ -17,6 +17,7 @@ SystemOptimizer.exe
 
 # Development tracking (not synced)
 TODO_PHASES.md
+EXPERIMENTAL_PLANS.md
 
 # Downloaded tools (runtime)
 tools/*.exe

@@ -603,6 +603,121 @@ function Invoke-OptFunction {
     }
 }
 
+function Invoke-SnapshotAction {
+    <#
+    .SYNOPSIS
+        Handle snapshot menu actions (S, C, R)
+    #>
+    param(
+        [ValidateSet("Take", "Compare", "Report")]
+        [string]$Action
+    )
+    
+    # Check if Rollback module is loaded
+    if (-not (Get-Command 'New-FullSystemSnapshot' -ErrorAction SilentlyContinue)) {
+        Write-Host ""
+        Write-Host "Snapshot functions not available. Rollback module not loaded." -ForegroundColor Red
+        return
+    }
+    
+    switch ($Action) {
+        "Take" {
+            Write-Host ""
+            Write-Host ("=" * 65) -ForegroundColor Cyan
+            Write-Host "  TAKE SYSTEM SNAPSHOT" -ForegroundColor Yellow
+            Write-Host ("=" * 65) -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "  This will capture the current state of:" -ForegroundColor Gray
+            Write-Host "    - All Windows services and their startup types" -ForegroundColor Gray
+            Write-Host "    - Scheduled tasks and their states" -ForegroundColor Gray
+            Write-Host "    - Installed UWP/Store apps" -ForegroundColor Gray
+            Write-Host "    - Key registry optimization settings" -ForegroundColor Gray
+            Write-Host "    - Current memory usage" -ForegroundColor Gray
+            Write-Host ""
+            
+            $response = Read-Host "  Take snapshot now? (Y/n)"
+            if ($response -notmatch '^[Nn]') {
+                Write-Host ""
+                $script:BeforeSnapshot = New-FullSystemSnapshot -Type "Before" -Save
+                Write-Host ""
+                Write-Host "  Snapshot saved! Run optimizations, then use [C] to compare." -ForegroundColor Green
+            }
+        }
+        
+        "Compare" {
+            Write-Host ""
+            Write-Host ("=" * 65) -ForegroundColor Cyan
+            Write-Host "  COMPARE BEFORE/AFTER" -ForegroundColor Yellow
+            Write-Host ("=" * 65) -ForegroundColor Cyan
+            Write-Host ""
+            
+            # Check for before snapshot
+            $beforeSnapshot = $script:BeforeSnapshot
+            if (-not $beforeSnapshot) {
+                # Try to load from disk
+                $beforeSnapshot = Get-LatestSnapshot -Type "Before"
+            }
+            
+            if (-not $beforeSnapshot) {
+                Write-Host "  No 'before' snapshot found." -ForegroundColor Yellow
+                Write-Host "  Use [S] to take a snapshot before running optimizations." -ForegroundColor Gray
+                return
+            }
+            
+            Write-Host "  Taking 'after' snapshot..." -ForegroundColor Cyan
+            $afterSnapshot = New-FullSystemSnapshot -Type "After"
+            
+            # Show comparison
+            Show-SnapshotComparison -Before $beforeSnapshot -After $afterSnapshot
+        }
+        
+        "Report" {
+            Write-Host ""
+            Write-Host ("=" * 65) -ForegroundColor Cyan
+            Write-Host "  GENERATE OPTIMIZATION REPORT" -ForegroundColor Yellow
+            Write-Host ("=" * 65) -ForegroundColor Cyan
+            Write-Host ""
+            
+            # Get profile name if available
+            $profileName = $null
+            if (Get-Command 'Get-ActiveProfile' -ErrorAction SilentlyContinue) {
+                $activeProfile = Get-ActiveProfile
+                if ($activeProfile -and $activeProfile.Name) {
+                    $profileName = $activeProfile.Name
+                }
+            }
+            
+            # Check for snapshots
+            $beforeSnapshot = $script:BeforeSnapshot
+            if (-not $beforeSnapshot) {
+                $beforeSnapshot = Get-LatestSnapshot -Type "Before"
+            }
+            
+            $afterSnapshot = $null
+            if ($beforeSnapshot) {
+                Write-Host "  Found 'before' snapshot. Taking 'after' snapshot for comparison..." -ForegroundColor Cyan
+                $afterSnapshot = New-FullSystemSnapshot -Type "After"
+            } else {
+                Write-Host "  No 'before' snapshot found. Report will show session summary only." -ForegroundColor Yellow
+                # Take a snapshot anyway for hardware info
+                $beforeSnapshot = New-FullSystemSnapshot -Type "Before"
+            }
+            
+            # Generate report
+            $reportPath = New-OptimizationReport -BeforeSnapshot $beforeSnapshot `
+                -AfterSnapshot $afterSnapshot `
+                -ProfileName $profileName
+            
+            Write-Host ""
+            Write-Host "  Open report now? (Y/n)" -ForegroundColor Yellow
+            $response = Read-Host
+            if ($response -notmatch '^[Nn]') {
+                Start-Process notepad.exe -ArgumentList $reportPath
+            }
+        }
+    }
+}
+
 # ============================================================================
 # MAIN MENU
 # ============================================================================
@@ -761,6 +876,13 @@ function Show-MainMenu {
     Write-MenuItem "38" "Optimization Profiles       " "Gaming, Developer, Office profiles with auto-suggestions" 'Show-ProfileMenu'
     Write-Host ""
     
+    # Snapshot & Comparison (NEW)
+    Write-Host "  Snapshot & Comparison:" -ForegroundColor Cyan
+    Write-Host "  [S] Take System Snapshot      - Capture current state for comparison" -ForegroundColor Cyan
+    Write-Host "  [C] Compare Before/After      - Show comparison if snapshots exist" -ForegroundColor Cyan
+    Write-Host "  [R] Generate Report           - Create desktop optimization report" -ForegroundColor Cyan
+    Write-Host ""
+    
     Write-Host "  Log: $LogFile" -ForegroundColor DarkGray
     Write-Host "  " -NoNewline
     Write-Host "[X] = Module not loaded" -ForegroundColor DarkGray
@@ -819,6 +941,15 @@ function Start-MainMenu {
             "36" { Invoke-OptFunction 'Show-RollbackMenu' }          # Rollback.psm1
             "37" { Invoke-OptFunction 'Show-HardwareSummary' }       # Hardware.psm1
             "38" { Invoke-OptFunction 'Show-ProfileMenu' }           # Profiles.psm1
+            
+            # Snapshot & Comparison options
+            "S" { Invoke-SnapshotAction -Action "Take" }
+            "s" { Invoke-SnapshotAction -Action "Take" }
+            "C" { Invoke-SnapshotAction -Action "Compare" }
+            "c" { Invoke-SnapshotAction -Action "Compare" }
+            "R" { Invoke-SnapshotAction -Action "Report" }
+            "r" { Invoke-SnapshotAction -Action "Report" }
+            
             "U"  { Update-SystemOptimizer }
             "u"  { Update-SystemOptimizer }
             "0"  { 
@@ -857,6 +988,57 @@ if (-not $SkipModuleLoad) {
         $continue = Read-Host "Continue anyway? (y/N)"
         if ($continue -ne 'y' -and $continue -ne 'Y') {
             exit 1
+        }
+    }
+}
+
+# Check for pending before/after comparison (post-reboot)
+if (Get-Command 'Test-PendingComparison' -ErrorAction SilentlyContinue) {
+    if (Test-PendingComparison) {
+        Write-Host ""
+        Write-Host ("=" * 65) -ForegroundColor Yellow
+        Write-Host "  PREVIOUS OPTIMIZATION SESSION DETECTED" -ForegroundColor Yellow
+        Write-Host ("=" * 65) -ForegroundColor Yellow
+        Write-Host ""
+        
+        $pending = Get-PendingComparison
+        if ($pending) {
+            $sessionTime = if ($pending.Timestamp) {
+                try { (Get-Date $pending.Timestamp).ToString("yyyy-MM-dd HH:mm") } catch { "Unknown" }
+            } else { "Unknown" }
+            $appliedProfile = if ($pending.ProfileApplied) { $pending.ProfileApplied } else { "Custom" }
+            
+            Write-Host "  Session: $sessionTime" -ForegroundColor Gray
+            Write-Host "  Profile: $appliedProfile" -ForegroundColor Gray
+            Write-Host ""
+            
+            $response = Read-Host "  Generate before/after comparison report? (Y/n)"
+            
+            if ($response -notmatch '^[Nn]') {
+                Write-Host ""
+                Write-Host "  Taking 'after' snapshot..." -ForegroundColor Cyan
+                
+                # Take after snapshot
+                $afterSnapshot = New-FullSystemSnapshot -Type "After"
+                
+                # Get before snapshot from pending
+                $beforeSnapshot = $pending.BeforeSnapshot
+                
+                # Show comparison in console
+                Show-SnapshotComparison -Before $beforeSnapshot -After $afterSnapshot
+                
+                # Generate desktop report with comparison
+                New-OptimizationReport -BeforeSnapshot $beforeSnapshot `
+                    -AfterSnapshot $afterSnapshot `
+                    -ProfileName $appliedProfile
+                
+                Write-Host ""
+                Write-Host "  Press any key to continue to main menu..." -ForegroundColor Gray
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+            }
+            
+            # Clean up pending file
+            Remove-PendingComparison
         }
     }
 }
@@ -905,6 +1087,11 @@ if ($RunOption) {
         'rollback' = 'Show-RollbackMenu'
         'hardware' = 'Show-HardwareSummary'
         'profiles' = 'Show-ProfileMenu'
+        
+        # Snapshot & Comparison
+        'snapshot' = 'Take-Snapshot'
+        'compare' = 'Compare-Snapshots'
+        'report' = 'Generate-Report'
         
         # Deployment Tools
         'vhd' = 'Start-VHDMenu'
