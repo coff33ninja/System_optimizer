@@ -2,10 +2,12 @@
 # This script builds the EXE locally for testing
 
 param(
-    [string]$Version = "1.0.0"
+    [string]$Version = "1.0.0",
+    [string]$Suffix = ""  # e.g., "-dev" for dev builds
 )
 
-Write-Host "Building System Optimizer EXE..." -ForegroundColor Cyan
+$exeName = "SystemOptimizer$Suffix.exe"
+Write-Host "Building System Optimizer EXE ($exeName)..." -ForegroundColor Cyan
 
 # Clean up temp files first
 Write-Host "Cleaning up temp files..." -ForegroundColor Yellow
@@ -31,7 +33,7 @@ Import-Module ps2exe
 # Build the EXE with embedded modules
 try {
     $inputFile = Join-Path (Split-Path $PSScriptRoot -Parent) "Start-SystemOptimizer.ps1"
-    $outputFile = Join-Path (Split-Path $PSScriptRoot -Parent) "SystemOptimizer.exe"
+    $outputFile = Join-Path (Split-Path $PSScriptRoot -Parent) $exeName
     $modulesDir = Join-Path (Split-Path $PSScriptRoot -Parent) "modules"
     
     if (-not (Test-Path $inputFile)) {

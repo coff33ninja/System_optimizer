@@ -447,11 +447,14 @@ function Update-ModulesFromGitHub {
                        'Registry','Rollback','Security','Services','Shutdown','Software','Tasks',
                        'Telemetry','UITweaks','Utilities','VBS','VHDDeploy','WindowsUpdate')
         
-        Write-Host "[*] Downloading modules from GitHub (v$Version)..." -ForegroundColor Yellow
+        # Use configured branch (defaults to main, can be overridden)
+        $branch = $Config.GitHubBranch
+        
+        Write-Host "[*] Downloading modules from GitHub ($branch branch, v$Version)..." -ForegroundColor Yellow
         $downloaded = 0
         foreach ($mod in $moduleList) {
             try {
-                $url = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/modules/$mod.psm1"
+                $url = "https://raw.githubusercontent.com/$($Config.GitHubRepo)/$branch/modules/$mod.psm1"
                 $outPath = Join-Path $TargetPath "$mod.psm1"
                 Invoke-WebRequest -Uri $url -OutFile $outPath -UseBasicParsing -ErrorAction Stop
                 $downloaded++
