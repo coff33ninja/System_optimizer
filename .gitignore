@@ -1,0 +1,26 @@
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# Built executables
+SystemOptimizer.exe
+*.exe
+
+# IDE
+.vscode/
+.idea/
+
+# Development tracking (not synced)
+TODO_PHASES.md
+
+# Downloaded tools (runtime)
+tools/*.exe
+tools/*.zip
+
+# Backup data
+*.bak

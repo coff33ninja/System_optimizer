@@ -1,0 +1,107 @@
+{
+  "description": "System Optimizer - Winget Package List",
+  "version": "1.0",
+  "packages": {
+    "browsers": [
+      { "id": "Mozilla.Firefox", "name": "Firefox" },
+      { "id": "Google.Chrome", "name": "Google Chrome" },
+      { "id": "BraveSoftware.BraveBrowser", "name": "Brave Browser" }
+    ],
+    "media": [
+      { "id": "VideoLAN.VLC", "name": "VLC Media Player" },
+      { "id": "CodecGuide.K-LiteCodecPack.Full", "name": "K-Lite Codec Pack" },
+      { "id": "Gyan.FFmpeg", "name": "FFmpeg" }
+    ],
+    "utilities": [
+      { "id": "7zip.7zip", "name": "7-Zip" },
+      { "id": "WinSCP.WinSCP", "name": "WinSCP" },
+      { "id": "Notepad++.Notepad++", "name": "Notepad++" },
+      { "id": "voidtools.Everything", "name": "Everything Search" }
+    ],
+    "remote_desktop": [
+      { "id": "RustDesk.RustDesk", "name": "RustDesk" },
+      { "id": "AnyDeskSoftwareGmbH.AnyDesk", "name": "AnyDesk" },
+      { "id": "TeamViewer.TeamViewer", "name": "TeamViewer" }
+    ],
+    "development": [
+      { "id": "Microsoft.PowerShell", "name": "PowerShell 7" },
+      { "id": "Python.Python.3.11", "name": "Python 3.11" },
+      { "id": "Git.Git", "name": "Git" },
+      { "id": "Microsoft.VisualStudioCode", "name": "VS Code" },
+      { "id": "Microsoft.WindowsTerminal", "name": "Windows Terminal" }
+    ],
+    "runtimes": [
+      { "id": "Microsoft.DotNet.Runtime.8", "name": ".NET Runtime 8" },
+      { "id": "Microsoft.DotNet.Runtime.7", "name": ".NET Runtime 7" },
+      { "id": "Microsoft.DotNet.Runtime.6", "name": ".NET Runtime 6" },
+      { "id": "Microsoft.DotNet.DesktopRuntime.8", "name": ".NET Desktop Runtime 8" },
+      { "id": "Microsoft.DotNet.DesktopRuntime.7", "name": ".NET Desktop Runtime 7" },
+      { "id": "Microsoft.DotNet.DesktopRuntime.6", "name": ".NET Desktop Runtime 6" },
+      { "id": "Microsoft.VCRedist.2015+.x64", "name": "VC++ 2015-2022 x64" },
+      { "id": "Microsoft.VCRedist.2015+.x86", "name": "VC++ 2015-2022 x86" },
+      { "id": "Microsoft.VCRedist.2013.x64", "name": "VC++ 2013 x64" },
+      { "id": "Microsoft.VCRedist.2013.x86", "name": "VC++ 2013 x86" },
+      { "id": "Microsoft.VCRedist.2012.x64", "name": "VC++ 2012 x64" },
+      { "id": "Microsoft.VCRedist.2012.x86", "name": "VC++ 2012 x86" },
+      { "id": "Microsoft.VCRedist.2010.x64", "name": "VC++ 2010 x64" },
+      { "id": "Microsoft.VCRedist.2010.x86", "name": "VC++ 2010 x86" },
+      { "id": "Microsoft.DirectX", "name": "DirectX" },
+      { "id": "Oracle.JavaRuntimeEnvironment", "name": "Java Runtime" }
+    ],
+    "security": [
+      { "id": "Malwarebytes.Malwarebytes", "name": "Malwarebytes" },
+      { "id": "Twilio.Authy", "name": "Authy 2FA" }
+    ],
+    "communication": [
+      { "id": "Discord.Discord", "name": "Discord" },
+      { "id": "Zoom.Zoom", "name": "Zoom" },
+      { "id": "SlackTechnologies.Slack", "name": "Slack" }
+    ],
+    "gaming": [
+      { "id": "Valve.Steam", "name": "Steam" },
+      { "id": "EpicGames.EpicGamesLauncher", "name": "Epic Games" },
+      { "id": "Nvidia.GeForceExperience", "name": "GeForce Experience" }
+    ],
+    "documents": [
+      { "id": "Adobe.Acrobat.Reader.64-bit", "name": "Adobe Reader DC" },
+      { "id": "SumatraPDF.SumatraPDF", "name": "SumatraPDF" },
+      { "id": "TheDocumentFoundation.LibreOffice", "name": "LibreOffice" }
+    ],
+    "system": [
+      { "id": "CrystalDewWorld.CrystalDiskInfo", "name": "CrystalDiskInfo" },
+      { "id": "CPUID.CPU-Z", "name": "CPU-Z" },
+      { "id": "TechPowerUp.GPU-Z", "name": "GPU-Z" },
+      { "id": "REALiX.HWiNFO", "name": "HWiNFO" },
+      { "id": "Ookla.Speedtest.Desktop", "name": "Speedtest" }
+    ],
+    "drivers": [
+      { "id": "Nvidia.PhysX", "name": "NVIDIA PhysX" },
+      { "id": "ClockworkMod.UniversalADBDriver", "name": "Universal ADB Driver" }
+    ]
+  },
+  "presets": {
+    "essential": [
+      "Mozilla.Firefox", "7zip.7zip", "VideoLAN.VLC", "Notepad++.Notepad++",
+      "Microsoft.VCRedist.2015+.x64", "Microsoft.VCRedist.2015+.x86",
+      "Adobe.Acrobat.Reader.64-bit"
+    ],
+    "developer": [
+      "Microsoft.PowerShell", "Git.Git", "Microsoft.VisualStudioCode",
+      "Microsoft.WindowsTerminal", "Python.Python.3.11",
+      "Microsoft.DotNet.Runtime.8", "Microsoft.DotNet.DesktopRuntime.8"
+    ],
+    "runtimes_all": [
+      "Microsoft.DotNet.Runtime.8", "Microsoft.DotNet.Runtime.7", "Microsoft.DotNet.Runtime.6",
+      "Microsoft.DotNet.DesktopRuntime.8", "Microsoft.DotNet.DesktopRuntime.7", "Microsoft.DotNet.DesktopRuntime.6",
+      "Microsoft.VCRedist.2015+.x64", "Microsoft.VCRedist.2015+.x86",
+      "Microsoft.VCRedist.2013.x64", "Microsoft.VCRedist.2013.x86",
+      "Microsoft.VCRedist.2012.x64", "Microsoft.VCRedist.2012.x86",
+      "Microsoft.VCRedist.2010.x64", "Microsoft.VCRedist.2010.x86",
+      "Microsoft.DirectX", "Oracle.JavaRuntimeEnvironment"
+    ],
+    "gaming": [
+      "Valve.Steam", "EpicGames.EpicGamesLauncher", "Discord.Discord",
+      "Nvidia.GeForceExperience", "Nvidia.PhysX"
+    ]
+  }
+}

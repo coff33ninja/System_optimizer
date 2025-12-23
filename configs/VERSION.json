@@ -1,0 +1,33 @@
+﻿{
+    "Version":  "1.0.0",
+    "LastUpdated":  "2025-12-23T19:41:52.6924220+02:00",
+    "Modules":  {
+                    "Backup":  "1.0.0",
+                    "Bloatware":  "1.0.0",
+                    "Core":  "1.0.0",
+                    "Drivers":  "1.0.0",
+                    "Hardware":  "1.0.0",
+                    "ImageTool":  "1.0.0",
+                    "Installer":  "1.0.0",
+                    "Logging":  "1.0.0",
+                    "Maintenance":  "1.0.0",
+                    "Network":  "1.0.0",
+                    "OneDrive":  "1.0.0",
+                    "Power":  "1.0.0",
+                    "Privacy":  "1.0.0",
+                    "Profiles":  "1.0.0",
+                    "Registry":  "1.0.0",
+                    "Rollback":  "1.0.0",
+                    "Security":  "1.0.0",
+                    "Services":  "1.0.0",
+                    "Shutdown":  "1.0.0",
+                    "Software":  "1.0.0",
+                    "Tasks":  "1.0.0",
+                    "Telemetry":  "1.0.0",
+                    "UITweaks":  "1.0.0",
+                    "Utilities":  "1.0.0",
+                    "VBS":  "1.0.0",
+                    "VHDDeploy":  "1.0.0",
+                    "WindowsUpdate":  "1.0.0"
+                }
+}
