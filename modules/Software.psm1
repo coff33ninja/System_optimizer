@@ -1,6 +1,42 @@
-# ============================================================================
-# Software Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Software Module - System Optimizer
+.DESCRIPTION
+    Provides software installation and management through multiple package managers.
+    Includes PatchMyPC, Winget, Chocolatey, and remote desktop tools.
+
+Exported Functions:
+    Start-PatchMyPC          - Launch PatchMyPC updater
+    Install-WingetPackages   - Install Winget preset packages
+    Install-Chocolatey       - Install Chocolatey and packages
+    Install-RemoteDesktop    - Install RustDesk/AnyDesk
+    Show-SoftwareMenu        - Interactive software menu
+
+Package Managers:
+    PatchMyPC    - Pre-configured software selection
+    Winget       - Windows Package Manager presets
+    Chocolatey   - Alternative package manager
+
+Winget Presets:
+    Essential    - Browsers, 7-Zip, VLC, etc.
+    Runtimes     - VC++, .NET, Java
+    Developer    - VS Code, Git, Python
+    Gaming       - Steam, Discord, etc.
+    Security     - Malwarebytes, etc.
+
+Remote Desktop:
+    RustDesk     - Free remote desktop
+    AnyDesk      - Alternative remote desktop
+
+Configuration:
+    configs/PatchMyPC.ini
+    configs/winget_packages.json
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Start-PatchMyPC {
     $BaseDir = "C:\System_Optimizer\Updater"

@@ -1,8 +1,36 @@
-# ============================================================================
-# Shutdown Module - System Optimizer
-# ============================================================================
-# All shutdown, restart, sleep, hibernate, and power state functions
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Shutdown Module - System Optimizer
+.DESCRIPTION
+    Provides power state controls and shutdown/restart options.
+
+Exported Functions:
+    Show-ShutdownMenu    - Interactive shutdown menu
+    Restart-Computer     - Restart with optional delay
+    Stop-Computer        - Shutdown with optional delay
+    Suspend-Computer     - Sleep/Standby
+    Hibernate-Computer   - Hibernate
+    Lock-Computer        - Lock workstation
+    SignOut-User         - Sign out current user
+
+Power States:
+    - Restart: Reboot system
+    - Shutdown: Power off
+    - Sleep: Low power standby
+    - Hibernate: Save state to disk
+    - Lock: Lock without signing out
+    - Sign Out: End user session
+
+Features:
+    - Countdown timer with cancel option
+    - Force close applications option
+    - Scheduled shutdown capability
+
+Requires Admin: No (most functions)
+
+Version: 1.0.0
+#>
 
 function Show-ShutdownMenu {
     do {

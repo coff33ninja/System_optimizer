@@ -1,13 +1,43 @@
-# ============================================================================
-# Installer Module - System Optimizer
-# ============================================================================
-# Windows Deployment to Blank Drives
-# ============================================================================
-# ============================================================================
-# WINDOWS INSTALLER - Deploy Windows to Blank Drive
-# ============================================================================
-# Part of System Optimizer - https://github.com/coff33ninja/System_Optimizer
-# Based on AIO Windows Install scripts
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Installer Module - System Optimizer
+.DESCRIPTION
+    Provides Windows deployment to blank drives with disk preparation
+    and automated installation workflows.
+
+Exported Functions:
+    Start-InstallerMenu       - Interactive installer menu
+    Start-QuickInstall        - Quick install wizard
+    Initialize-TargetDisk     - Prepare disk with diskpart
+    Deploy-WindowsImage       - Deploy Windows to prepared disk
+    Add-BootEntry             - Add Windows to boot menu
+
+Disk Preparation:
+    - Single disk layout (GPT/UEFI or MBR/Legacy)
+    - Dual disk layout (OS + Data)
+    - Automatic diskpart scripting
+    - GPT/UEFI or MBR/Legacy support
+
+Deployment Options:
+    - Windows 10/11 from ISO/WIM
+    - Edition selection (Home/Pro/Enterprise)
+    - Driver injection
+    - Unattend.xml support
+    - System Optimizer auto-shortcut
+
+Tools Used:
+    - WinNTSetup: Windows deployment
+    - DISM: Image application
+    - bcdboot: Boot configuration
+
+Work Directory:
+    C:\System_Optimizer\Installer\
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 # ============================================================================
 # WARNING: This script will ERASE data on selected disks!
 # Use with caution - designed for clean installations only.

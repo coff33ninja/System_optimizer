@@ -1,11 +1,41 @@
-# ============================================================================
-# Bloatware Module - System Optimizer
-# ============================================================================
-# Converted from DEBLOATER.ps1
-# Windows 10/11 Debloating Functions
-# Compatible with: Windows 7+ and PowerShell 2.0+
-# Note: AppX functions only work on Windows 8+ (AppX doesn't exist on Win7)
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Bloatware Module - System Optimizer
+.DESCRIPTION
+    Provides Windows 10/11 debloating functions to remove pre-installed apps
+    and privacy-invasive components. Compatible with Windows 7+ and PowerShell 2.0+.
+
+Exported Functions:
+    Test-AppxSupport          - Check if AppX cmdlets are available
+    Get-AppxPackageSafe       - Get AppX packages with fallback
+    Remove-AppxPackageSafe    - Remove AppX package with error handling
+    Add-AppxPackageSafe       - Add AppX package with error handling
+    DebloatBlacklist          - Remove blacklisted bloatware apps
+    DebloatAll                - Aggressive debloating (all removable apps)
+    Protect-Privacy           - Apply privacy tweaks without app removal
+    Block-TelemetryHosts      - Block telemetry via hosts file
+
+Apps Removed:
+    - Xbox apps (Game Bar, Identity Provider, etc.)
+    - Microsoft apps (Solitaire, News, Weather, etc.)
+    - Third-party (TikTok, Candy Crush, Spotify, etc.)
+    - Clipchamp, Phone Link, Quick Assist
+
+Compatibility:
+    - Windows 7+: Core functions work
+    - Windows 8+: AppX functions available
+    - Windows 10/11: Full functionality
+
+Notes:
+    - Keeps Teams and Phone Companion by default (startup disabled only)
+    - Creates restore point before aggressive debloating
+    - Supports both AppX and traditional uninstall methods
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 # ============================================================================
 # COMPATIBILITY HELPERS

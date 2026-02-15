@@ -1,10 +1,38 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Help module for System Optimizer - Displays menu item descriptions
+    Help Module - System Optimizer
 .DESCRIPTION
-    Provides help functionality by parsing FEATURES.md and displaying
-    detailed descriptions for menu items.
+    Provides dynamic help functionality by parsing FEATURES.md and displaying
+    detailed descriptions for all menu items. Enables transparency by making
+    feature documentation accessible directly from the UI.
+
+Exported Functions:
+    Show-MenuHelp        - Display help for all menu items
+    Get-MenuItemHelp     - Get help for specific menu item
+    Find-FeaturesFile    - Locate FEATURES.md locally or download
+    Parse-FeaturesFile   - Parse FEATURES.md into structured data
+    Show-FeatureDetails  - Display detailed feature information
+
+Help Features:
+    - Parses FEATURES.md for current descriptions
+    - Downloads from GitHub if local file not found
+    - Caches parsed data for performance
+    - Matches menu numbers to documentation
+    - Displays in formatted console output
+
+Documentation Source:
+    Local: docs/FEATURES.md
+    Fallback: GitHub raw content
+
+Integration:
+    - Called from main menu [?] option
+    - Provides transparency for all optimizations
+    - References full documentation
+
+Requires Admin: No
+
+Version: 1.0.0
 #>
 
 # Cache for parsed menu data

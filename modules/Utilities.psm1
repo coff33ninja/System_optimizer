@@ -1,6 +1,32 @@
-# ============================================================================
-# Utilities Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Utilities Module - System Optimizer
+.DESCRIPTION
+    Provides utility functions for System Optimizer including Wi-Fi password extraction,
+    optimization status verification, log viewing, and menu display helpers.
+
+Exported Functions:
+    Get-WifiPasswords           - Extract saved Wi-Fi passwords
+    Verify-OptimizationStatus   - Check current optimization status
+    Show-LogViewer              - Interactive log viewer
+    Initialize-Logging          - Initialize logging (compatibility)
+    Write-Log                   - Write log entry (wrapper)
+    Set-ConsoleSize             - Set console window dimensions
+    Show-Menu                   - Display formatted menu
+
+Features:
+    - Wi-Fi password extraction from system profiles
+    - Multi-category optimization verification
+    - Log file browsing with filtering
+    - Console size management for UI consistency
+
+Dependencies:
+    - Requires admin privileges for Wi-Fi password extraction
+    - Logging module for Write-Log functionality
+
+Version: 1.0.0
+#>
 
 function Get-WifiPasswords {
     Write-Log "EXTRACTING WI-FI PASSWORDS" "SECTION"

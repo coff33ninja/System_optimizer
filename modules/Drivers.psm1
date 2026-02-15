@@ -1,6 +1,35 @@
-﻿# ============================================================================
-# Drivers Module - System Optimizer
-# ============================================================================
+﻿#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Drivers Module - System Optimizer
+.DESCRIPTION
+    Provides driver management through Snappy Driver Installer (SDI)
+    and DISM-based backup/restore functionality.
+
+Exported Functions:
+    Start-SnappyDriverInstaller   - Launch SDI for driver updates
+    Backup-Drivers                - Backup drivers via DISM
+    Restore-Drivers               - Restore drivers from backup
+    Export-Drivers                - Export drivers to folder
+
+SDI Integration:
+    - Downloads SDI automatically
+    - SDI Lite for quick updates
+    - Full SDI with auto-update
+    - Driver pack management
+
+DISM Operations:
+    - Export all third-party drivers
+    - Import drivers from backup
+    - Online/offline driver management
+
+Backup Location:
+    C:\System_Optimizer_Backup\DRIVERS_EXPORT
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Start-SnappyDriverInstaller {
     $BaseDir = "C:\System_Optimizer\SDI"

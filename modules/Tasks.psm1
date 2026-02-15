@@ -1,6 +1,35 @@
-# ============================================================================
-# Tasks Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Tasks Module - System Optimizer
+.DESCRIPTION
+    Provides Windows scheduled task management for disabling telemetry
+    and diagnostic tasks.
+
+Exported Functions:
+    Disable-ScheduledTasks   - Disable 19+ telemetry tasks
+    Enable-ScheduledTasks    - Re-enable disabled tasks
+
+Tasks Disabled:
+    - Microsoft Compatibility Appraiser
+    - ProgramDataUpdater
+    - StartupAppTask
+    - Customer Experience Improvement Program tasks
+    - Disk Diagnostic tasks
+    - Windows Error Reporting tasks
+    - Cloud Experience Host tasks
+    - Feedback notifications
+    - Office telemetry tasks
+
+Safety:
+    - Only disables non-essential diagnostic tasks
+    - Does not affect system maintenance tasks
+    - Can be re-enabled via Enable-ScheduledTasks
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Disable-ScheduledTasks {
     Write-Log "DISABLING SCHEDULED TASKS" "SECTION"

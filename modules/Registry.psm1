@@ -1,6 +1,40 @@
-# ============================================================================
-# Registry Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Registry Module - System Optimizer
+.DESCRIPTION
+    Provides registry-based performance optimizations and tweaks for Windows.
+    Includes SSD optimizations, UI tweaks, and gaming performance settings.
+
+Exported Functions:
+    Set-RegistryOptimizations   - Apply 20+ registry tweaks
+    Optimize-SSD                - SSD-specific optimizations
+    Set-GamingOptimizations     - Gaming performance tweaks
+
+Tweaks Applied:
+    - Menu show delay (400ms → 0ms)
+    - Disable Game Bar and DVR
+    - Disable animations and transparency
+    - Startup delay removal
+    - Mouse acceleration disable
+    - Thumbnail cache optimization
+    - NTFS last access timestamp disable
+    - 8.3 filename creation disable
+    - Fullscreen optimizations disable
+    - Hardware GPU scheduling enable
+    - Memory management (LargeSystemCache)
+    - Prefetch/Superfetch on SSD
+    - Icon cache size increase
+
+Registry Areas:
+    - HKCU:\Control Panel\Desktop
+    - HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer
+    - HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Set-RegistryOptimizations {
     Write-Log "APPLYING REGISTRY OPTIMIZATIONS" "SECTION"

@@ -1,6 +1,30 @@
-# ============================================================================
-# OneDrive Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    OneDrive Module - System Optimizer
+.DESCRIPTION
+    Provides complete OneDrive removal and cleanup functionality.
+
+Exported Functions:
+    Remove-OneDrive   - Complete OneDrive uninstallation
+    Install-OneDrive  - Reinstall OneDrive (if needed)
+
+Actions Performed:
+    - Stop OneDrive processes
+    - Uninstall OneDrive application
+    - Remove from Explorer sidebar
+    - Disable via Group Policy
+    - Clean up registry entries
+    - Remove leftover files
+
+Safety:
+    - Creates restore point before removal
+    - Can be reinstalled via Microsoft Store if needed
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Remove-OneDrive {
     Write-Log "REMOVING ONEDRIVE" "SECTION"

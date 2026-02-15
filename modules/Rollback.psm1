@@ -1,8 +1,41 @@
-# ============================================================================
-# ROLLBACK MODULE - Undo/Restore System for System Optimizer
-# ============================================================================
-# Tracks changes and generates reverse scripts for safe rollback
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Rollback Module - System Optimizer
+.DESCRIPTION
+    Provides comprehensive rollback and undo functionality for all optimizations.
+    Tracks changes and generates reverse scripts for safe restoration.
+
+Exported Functions:
+    Show-RollbackMenu           - Interactive rollback menu
+    Start-Session               - Begin tracking session
+    Complete-Session            - End tracking session
+    Undo-Session                - Rollback specific session
+    Get-SessionList             - List available sessions
+    Export-Session              - Export session to file
+    Import-Session              - Import session from file
+
+Tracked Changes:
+    - Registry modifications
+    - Service state changes
+    - File deletions
+    - Scheduled task changes
+    - Group Policy changes
+
+Safety Features:
+    - Automatic session tracking
+    - Reverse script generation
+    - System restore point integration
+    - Selective rollback (per change type)
+    - Session export/import
+
+Rollback Location:
+    C:\System_Optimizer\Rollback\
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 # ============================================================================
 # CONFIGURATION

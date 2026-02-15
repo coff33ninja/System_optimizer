@@ -1,6 +1,31 @@
-# ============================================================================
-# Security Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Security Module - System Optimizer
+.DESCRIPTION
+    Provides Windows Defender management and security tool integration.
+
+Exported Functions:
+    Set-DefenderControl    - Manage Windows Defender settings
+    Disable-Defender       - Disable real-time protection
+    Enable-Defender        - Enable real-time protection
+    Add-DefenderExclusion  - Add path exclusion
+    Remove-Defender        - Advanced Defender removal
+
+Defender Tools Integration:
+    - Defender_Tools.exe for advanced control
+    - Real-time protection toggle
+    - Cloud protection settings
+    - Automatic sample submission
+
+Warning:
+    Disabling Defender reduces system security.
+    Only recommended for advanced users with alternative protection.
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Set-DefenderControl {
     $BaseDir = "C:\System_Optimizer\Defender"

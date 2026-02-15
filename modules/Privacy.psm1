@@ -1,6 +1,30 @@
-# ============================================================================
-# Privacy Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Privacy Module - System Optimizer
+.DESCRIPTION
+    Provides additional privacy controls and O&O ShutUp10 integration.
+
+Exported Functions:
+    Start-OOShutUp10      - Launch O&O ShutUp10 with recommended config
+    Get-PrivacySettings   - Display current privacy settings
+    Set-PrivacySettings   - Apply additional privacy tweaks
+
+O&O ShutUp10 Integration:
+    - Downloads O&O ShutUp10 automatically
+    - Applies configs/ooshutup10.cfg
+    - 100+ privacy settings in one click
+    - No installation required
+
+Additional Tweaks:
+    - Enhanced privacy beyond telemetry module
+    - App permissions management
+    - Diagnostic data control
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Start-OOShutUp10 {
     Set-ConsoleSize

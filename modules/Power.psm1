@@ -1,6 +1,35 @@
-# ============================================================================
-# Power Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Power Module - System Optimizer
+.DESCRIPTION
+    Provides power plan management and battery optimization settings.
+
+Exported Functions:
+    Set-PowerPlan          - Configure power plan settings
+    Set-HighPerformance    - Enable High Performance plan
+    Set-UltimatePerformance - Enable Ultimate Performance (if available)
+
+Power Plans:
+    - High Performance: Maximum performance, higher power usage
+    - Ultimate Performance: Unlocked plan for workstations
+    - Balanced: Custom settings optimized for usage
+
+Settings Configured:
+    - Screen timeout (AC/Battery)
+    - Sleep timeout (AC/Battery)
+    - Hibernate timeout
+    - USB selective suspend
+    - Processor power management
+
+Battery Settings:
+    - Optimized for desktop replacement
+    - Conservative for laptop battery life
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Set-PowerPlan {
     Set-ConsoleSize

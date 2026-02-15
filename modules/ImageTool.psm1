@@ -1,13 +1,45 @@
-# ============================================================================
-# ImageTool Module - System Optimizer
-# ============================================================================
-# Converted from Windows-Image-Tool.ps1
-# ISO Creation, Windows Installation, and Image Modification Tools
-# ============================================================================
-# ============================================================================
-# WINDOWS IMAGE TOOL - ISO Creation & Windows Installation
-# ============================================================================
-# Part of System Optimizer - https://github.com/coff33ninja/System_Optimizer
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    ImageTool Module - System Optimizer
+.DESCRIPTION
+    Provides Windows image management, ISO creation, and modification tools.
+    Includes WIM editing, driver injection, and bootable USB creation.
+
+Exported Functions:
+    Start-ImageToolMenu       - Interactive Image Tool menu
+    New-WindowsISO            - Create custom Windows ISO
+    Mount-WindowsImage        - Mount WIM/ISO for editing
+    Dismount-WindowsImage     - Unmount and save changes
+    Add-DriversToImage        - Inject drivers into image
+    Remove-ImageBloatware     - Remove apps from offline image
+    Set-ImageTweaks           - Apply tweaks to offline image
+    New-UnattendFile          - Create answer file
+    New-BootableUSB           - Create bootable USB drive
+    Optimize-WIMImage         - Cleanup and optimize WIM
+
+Image Operations:
+    - Quick Create: Wizard for custom ISO
+    - Mount/Edit: Mount ISO/WIM for modification
+    - Apply Tweaks: TPM bypass, telemetry, dark theme
+    - Inject Drivers: From current system or folder
+    - Remove Bloatware: From offline image
+    - Unattend File: Answer file with auto-run
+    - Create Bootable USB: Format and copy
+    - WIM Optimization: Cleanup, export, ESD→WIM
+
+Tools Used:
+    - DISM: Windows imaging
+    - oscdimg: ISO creation
+    - WinNTSetup: Deployment
+
+Work Directory:
+    C:\System_Optimizer\ImageTool\
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 # Inspired by WinUtil MicroWin and NexTool Windows Install
 # ============================================================================
 

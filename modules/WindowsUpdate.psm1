@@ -1,6 +1,38 @@
-# ============================================================================
-# WindowsUpdate Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    WindowsUpdate Module - System Optimizer
+.DESCRIPTION
+    Provides Windows Update management, control, and repair functionality.
+
+Exported Functions:
+    Set-WindowsUpdateControl   - Windows Update control menu
+    Pause-WindowsUpdates       - Pause updates via registry
+    Resume-WindowsUpdates      - Resume updates
+    Disable-WindowsUpdate      - Disable Windows Update service
+    Enable-WindowsUpdate       - Enable Windows Update service
+    Repair-WindowsUpdate       - Repair broken Windows Update
+
+Update Control Options:
+    - Pause updates (registry method)
+    - Pause updates (scheduled task)
+    - Disable Windows Update service
+    - Enable Windows Update service
+    - Launch WUpdater GUI
+    - Configure driver updates
+    - Check for updates
+    - View update history
+
+Repair Operations:
+    - Stop update services
+    - Clear update cache
+    - Re-register 36 DLLs
+    - Restart services
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Set-WindowsUpdateControl {
     do {

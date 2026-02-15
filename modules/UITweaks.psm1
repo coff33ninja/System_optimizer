@@ -1,6 +1,38 @@
-# ============================================================================
-# UITweaks Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    UITweaks Module - System Optimizer
+.DESCRIPTION
+    Provides DISM++ style UI/UX tweaks for Windows customization.
+    Includes taskbar, Explorer, desktop, and context menu modifications.
+
+Exported Functions:
+    Start-DISMStyleTweaks     - Interactive UI tweaks menu
+    Set-TaskbarTweaks         - Taskbar and Start Menu tweaks
+    Set-ExplorerTweaks        - File Explorer customizations
+    Set-DesktopIconTweaks     - Desktop icon visibility
+    Set-ContextMenuTweaks     - Context menu modifications
+    Set-SecurityTweaks        - SmartScreen and security settings
+    Set-WindowsExperienceTweaks - Windows Experience settings
+    Set-PhotoViewerTweaks     - Classic Photo Viewer enable
+    Set-NotepadMediaTweaks    - Notepad and Media Player tweaks
+    Set-IEModeTweaks          - Internet Explorer mode settings
+
+Tweak Categories:
+    1. Taskbar & Start Menu - Seconds on clock, alignment
+    2. Explorer - Extensions, hidden files, full path
+    3. Desktop Icons - This PC, Recycle Bin, Control Panel
+    4. Context Menu - Classic menu (Win11), End Task
+    5. Security - SmartScreen, download warnings
+    6. Windows Experience - Suggestions, Spotlight
+    7. Photo Viewer - Re-enable classic viewer
+    8. Notepad & Media - Word wrap, WMP wizard
+    9. IE Mode - Compatibility settings
+
+Requires Admin: Yes (some tweaks)
+
+Version: 1.0.0
+#>
 
 # Helper function to safely write log messages (handles missing Write-Log)
 function script:Safe-WriteLog {

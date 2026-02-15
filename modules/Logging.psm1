@@ -1,14 +1,42 @@
-# ============================================================================
-# Logging Module - System Optimizer
-# ============================================================================
-# Shared logging functions for all System Optimizer components
-# ============================================================================
-# ============================================================================
-# SYSTEM OPTIMIZER - SHARED LOGGING MODULE
-# ============================================================================
-# Part of System Optimizer - https://github.com/coff33ninja/System_Optimizer
-# Include this module in other scripts for consistent logging
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Logging Module - System Optimizer
+.DESCRIPTION
+    Provides centralized logging functionality for all System Optimizer components.
+    Supports colored console output, file logging with rotation, and structured log entries.
+
+Exported Functions:
+    Initialize-Logging      - Initialize logging for a component
+    Remove-OldLogs          - Clean up logs older than retention period
+    Write-OptLog            - Write log entry with timestamp and level
+    Write-OptError          - Write error log with exception details
+    Write-OptCommand        - Log command execution
+    Write-OptSection        - Write section header
+    Start-OptOperation      - Begin logged operation
+    Complete-OptOperation   - Complete logged operation
+    Get-OptLogPath          - Get current log file path
+    Get-OptLogFiles         - List available log files
+    Show-OptRecentLogs      - Display recent log entries
+    Export-OptLogSummary    - Export log summary to file
+    Complete-Logging        - Finalize logging session
+
+Log Levels:
+    INFO     - General information
+    SUCCESS  - Successful operations
+    WARNING  - Warnings and non-critical issues
+    ERROR    - Errors and failures
+    SECTION  - Section headers
+    DEBUG    - Debug information (verbose mode)
+
+Log Location:
+    C:\System_Optimizer\Logs\
+
+Retention:
+    30 days (configurable)
+
+Version: 1.0.0
+#>
 
 # Global log settings
 $script:LogDir = "C:\System_Optimizer\Logs"

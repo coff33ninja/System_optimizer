@@ -1,9 +1,43 @@
-# ============================================================================
-# PROFILES MODULE - System Optimizer
-# ============================================================================
-# Optimization profiles that integrate with existing modules
-# Uses hardware detection to auto-suggest best profile
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Profiles Module - System Optimizer
+.DESCRIPTION
+    Provides hardware-based optimization profiles with auto-suggestion.
+    Integrates with existing modules for profile-specific optimizations.
+
+Exported Functions:
+    Show-ProfileMenu         - Interactive profile selection menu
+    Get-ActiveProfile        - Get currently active profile
+    Set-OptimizationProfile  - Apply optimization profile
+    Get-SuggestedProfile     - Get hardware-based suggestion
+    Compare-Profiles         - Compare profile settings
+    Export-ProfileConfig     - Export profile to file
+
+Available Profiles:
+    Gaming          - Max performance, minimal services
+    Developer       - WSL, Hyper-V, dev tools friendly
+    Office          - Balanced, productivity focused
+    Content Creator - Media tools, performance
+    Laptop          - Battery optimization
+    LowSpec         - Minimal resource usage
+
+Profile Features:
+    - Auto-suggest based on hardware detection
+    - WhatIf preview mode
+    - Profile comparison
+    - Rollback integration
+    - Custom profile creation
+
+Integration:
+    - Services module for service configurations
+    - Registry module for performance tweaks
+    - Hardware module for detection
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 # ============================================================================
 # CONFIGURATION

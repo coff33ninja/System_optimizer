@@ -1,6 +1,43 @@
-# ============================================================================
-# Services Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Services Module - System Optimizer
+.DESCRIPTION
+    Provides Windows service management with safe and aggressive modes.
+    Includes WinUtil integration for service configuration sync.
+
+Exported Functions:
+    Disable-Services              - Disable unnecessary services (Safe/Aggressive)
+    Sync-WinUtilServices          - Sync with Chris Titus Tech WinUtil
+    Apply-WinUtilServiceConfig    - Apply WinUtil service configuration
+    Preview-WinUtilServiceChanges - Preview changes before applying
+    Export-CurrentServiceStates   - Export current service states
+    Disable-TeamsStartup          - Disable Teams startup without removal
+    Enable-TeamsStartup           - Re-enable Teams startup
+    Show-ServicesMenu             - Interactive services menu
+
+Service Modes:
+    Safe Mode (~45 services):
+    - Telemetry services (DiagTrack, dmwappushservice)
+    - Xbox services (all gaming-related)
+    - Hyper-V guest services
+    - Rarely used features
+
+    Aggressive Mode (~90 services):
+    - All Safe Mode services plus:
+    - Print Spooler (if no printer)
+    - Windows Search
+    - Remote Desktop
+    - Camera/Notifications
+
+Backup:
+    - Automatic service state backup before changes
+    - JSON export for manual restore
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Disable-Services {
     param(

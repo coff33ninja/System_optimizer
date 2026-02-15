@@ -1,6 +1,33 @@
-# ============================================================================
-# VBS Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    VBS Module - System Optimizer
+.DESCRIPTION
+    Provides Virtualization-Based Security (VBS) and Memory Integrity control.
+    Disables security features that impact gaming performance.
+
+Exported Functions:
+    Disable-VBS   - Disable VBS, Memory Integrity, and Credential Guard
+    Enable-VBS    - Re-enable VBS security features
+
+Features Disabled:
+    - Core Isolation / Memory Integrity (HVCI)
+    - Credential Guard
+    - Hypervisor-protected Code Integrity
+
+Warning:
+    Improves gaming performance but reduces system security.
+    Only recommended for dedicated gaming systems.
+
+Registry Areas:
+    - HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard
+    - HKLM:\SYSTEM\CurrentControlSet\Control\Lsa
+
+Requires Admin: Yes
+Requires Reboot: Yes
+
+Version: 1.0.0
+#>
 
 function Disable-VBS {
     Write-Log "DISABLING VBS/MEMORY INTEGRITY" "SECTION"

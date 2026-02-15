@@ -1,9 +1,41 @@
-﻿# ============================================================================
-# HARDWARE MODULE - System Optimizer
-# ============================================================================
-# Detects CPU, GPU, Storage, Memory for smart optimization recommendations
-# Compatible with: Windows 7+ and PowerShell 2.0+
-# ============================================================================
+﻿#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Hardware Module - System Optimizer
+.DESCRIPTION
+    Provides comprehensive hardware detection and analysis for optimization
+    recommendations. Compatible with Windows 7+ and PowerShell 2.0+.
+
+Exported Functions:
+    Show-HardwareSummary     - Display hardware summary
+    Get-CPUInfo              - CPU detection (Intel/AMD)
+    Get-GPUInfo              - GPU detection (NVIDIA/AMD/Intel)
+    Get-MemoryInfo           - RAM detection with XMP status
+    Get-StorageInfo          - SSD/HDD/NVMe detection
+    Get-MotherboardInfo      - Motherboard details
+    Test-SystemCompatibility - Check system compatibility
+
+Detected Hardware:
+    CPU: Intel 1st-14th gen, Core Ultra, AMD Ryzen, FX, Phenom
+    GPU: NVIDIA GTX/RTX, AMD RX/Vega, Intel Arc/UHD/Iris
+    RAM: DDR type, XMP status, per-stick details
+    Storage: SSD/HDD/NVMe, TRIM status, SMART data
+
+Features:
+    - Hardware-based profile suggestions
+    - Performance bottleneck detection
+    - Upgrade recommendations
+    - Compatibility checking
+
+Compatibility:
+    - Windows 7+: Basic detection
+    - Windows 8+: Enhanced detection
+    - Windows 10/11: Full functionality
+
+Requires Admin: No (basic), Yes (full)
+
+Version: 1.0.0
+#>
 
 # ============================================================================
 # COMPATIBILITY HELPERS

@@ -1,13 +1,40 @@
-# ============================================================================
-# Backup Module - System Optimizer
-# ============================================================================
-# Converted from User_profile_Backup_and_Restore.ps1
-# ============================================================================
-# ============================================================================
-# USER PROFILE BACKUP & RESTORE TOOL
-# ============================================================================
-# Enhanced version with better error handling, logging, and browser support
-# Part of System Optimizer - https://github.com/coff33ninja/System_Optimizer
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Backup Module - System Optimizer
+.DESCRIPTION
+    Provides comprehensive user profile backup and restore functionality.
+    Supports browsers, applications, and full profile backup.
+
+Exported Functions:
+    Show-UserBackupMenu      - Interactive backup/restore menu
+    Backup-UserProfile       - Backup user data
+    Restore-UserProfile      - Restore from backup
+    Backup-BrowserData       - Backup browser profiles
+    Backup-ApplicationData   - Backup app settings
+
+Backup Types:
+    Essential: Desktop, Documents, Downloads
+    Browsers: Firefox, Chrome, Edge, Brave, Opera, Vivaldi
+    Applications: Outlook, Thunderbird, Discord, Spotify
+    Full Profile: Complete user folder
+    Custom: User-selected items
+
+Features:
+    - External drive detection
+    - Cross-computer restore
+    - JSON manifests
+    - PST file handling
+    - Progress tracking
+    - Integrity verification
+
+Backup Location:
+    C:\System_Optimizer_Backup\
+
+Requires Admin: No
+
+Version: 1.0.0
+#>
 # ============================================================================
 
 

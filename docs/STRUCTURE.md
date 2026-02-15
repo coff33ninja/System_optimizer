@@ -55,7 +55,7 @@ System_Optimizer/
 | **Tasks.psm1** | 2 | 19 scheduled task management |
 | **Registry.psm1** | 3 | 20+ performance tweaks, SSD optimization |
 | **VBS.psm1** | 2 | Memory Integrity, Credential Guard control |
-| **Network.psm1** | 4 | TCP/IP, DNS, adapter optimization |
+| **Network.psm1** | 12 | TCP/IP, DNS, adapter optimization, Wi-Fi, proxy, diagnostics |
 | **OneDrive.psm1** | 2 | Complete OneDrive removal |
 | **Privacy.psm1** | 3 | Additional privacy controls |
 | **UITweaks.psm1** | 10 | DISM++ style UI/UX tweaks |
@@ -64,7 +64,7 @@ System_Optimizer/
 
 | Module | Functions | Description |
 |--------|-----------|-------------|
-| **Maintenance.psm1** | 4 | DISM, SFC, cleanup, WMI reset |
+| **Maintenance.psm1** | 19 | DISM, SFC, cleanup, disk tools, system repair, startup manager |
 | **Power.psm1** | 3 | Power plans, battery settings |
 | **Security.psm1** | 5 | Defender control, security tools |
 | **WindowsUpdate.psm1** | 6 | Update control, pause, repair |
@@ -94,7 +94,7 @@ System_Optimizer/
 | **Installer.psm1** | 18 | Windows deployment to drives |
 | **VHDDeploy.psm1** | 15 | VHD native boot deployment |
 
-**Total: 27 modules, 196+ functions**
+**Total: 27 modules, 223+ functions**
 
 ---
 

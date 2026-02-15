@@ -1,6 +1,36 @@
 # ============================================================================
 # Network Module - System Optimizer
 # ============================================================================
+# This module provides comprehensive network management and optimization tools.
+#
+# Exported Functions:
+#   Set-NetworkOptimizations   - Apply TCP/IP and adapter optimizations
+#   Reset-Network              - Reset network stack to defaults
+#   Get-WiFiNetwork            - Wi-Fi network management
+#   Get-NetworkAdapter         - Network adapter management
+#   Set-ProxyConfiguration     - System proxy settings
+#   Edit-HostsFile             - Hosts file editor
+#   Start-NetworkDiagnostic    - Network diagnostics (ping, traceroute, etc.)
+#   Get-FirewallStatus         - Firewall status and rules
+#   Test-NetworkSpeed          - Network speed test
+#   Set-NetworkProfile         - Public/Private profile settings
+#   Set-AdvancedTCPSetting     - Advanced TCP configuration
+#   Start-NetworkMenu          - Interactive network menu (main entry)
+#
+# Menu Structure:
+#   [1]  Apply Network Optimizations
+#   [2]  Reset Network Configuration
+#   [3]  Wi-Fi Network Management
+#   [4]  Network Adapter Management
+#   [5]  Proxy Configuration
+#   [6]  Hosts File Editor
+#   [7]  Network Diagnostics
+#   [8]  Firewall Status
+#   [9]  Network Speed Test
+#   [10] Network Profile Settings
+#   [11] Advanced TCP Settings
+#
+# ============================================================================
 
 function Set-NetworkOptimizations {
     Write-Log "APPLYING NETWORK OPTIMIZATIONS" "SECTION"

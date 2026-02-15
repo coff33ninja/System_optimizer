@@ -1,6 +1,47 @@
 # ============================================================================
 # Maintenance Module - System Optimizer
 # ============================================================================
+# This module provides comprehensive system maintenance and repair tools.
+#
+# Exported Functions:
+#   Start-SystemMaintenance    - Automated maintenance (DISM, SFC, cleanup)
+#   Start-DiskCleanup          - Advanced disk cleanup with multiple modes
+#   Get-DiskSpaceInfo          - Get drive space information
+#   Show-DiskSpaceReport       - Display formatted disk space report
+#   Reset-GroupPolicy          - Reset Group Policy to defaults
+#   Reset-WMI                  - Repair Windows Management Instrumentation
+#   Start-CheckDisk            - Run chkdsk with options
+#   Start-SystemRestore        - System restore point management
+#   Start-BCDRepair            - Boot configuration repair
+#   Start-MemoryDiagnostic     - Memory test scheduling
+#   Get-DriveHealth            - SMART drive health check
+#   Start-WindowsUpdateRepair  - Fix Windows Update issues
+#   Start-DISMRepair           - DISM image repair tools
+#   Start-DriveOptimization    - Defrag/TRIM optimization
+#   Start-TimeSyncRepair       - Fix time synchronization
+#   Start-SearchIndexRebuild   - Rebuild Windows Search index
+#   Start-StartupProgramManager - Manage startup programs
+#   Start-MaintenanceMenu      - Interactive maintenance menu (main entry)
+#
+# Menu Structure:
+#   [1]  Run Automated Maintenance (DISM, SFC, Cleanup)
+#   [2]  Disk Cleanup
+#   [3]  Disk Space Report
+#   [4]  Drive Optimization (Defrag/TRIM)
+#   [5]  Check Disk (chkdsk)
+#   [6]  System Restore
+#   [7]  BCD/Boot Repair
+#   [8]  Memory Diagnostic
+#   [9]  Drive Health (SMART)
+#   [10] Windows Update Repair
+#   [11] DISM Repair Tools
+#   [12] Time Sync Repair
+#   [13] Search Index Rebuild
+#   [14] Startup Program Manager
+#   [15] Reset Group Policy
+#   [16] Reset WMI
+#
+# ============================================================================
 
 function Start-SystemMaintenance {
     Write-Log "RUNNING SYSTEM MAINTENANCE" "SECTION"

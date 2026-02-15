@@ -1,7 +1,35 @@
-﻿# ============================================================================
-# Core Module - System Optimizer
-# ============================================================================
-# Version: 1.0.0
+﻿#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Core Module - System Optimizer
+.DESCRIPTION
+    Provides core functionality for System Optimizer including progress tracking,
+    download helpers, and main entry points for optimization workflows.
+
+Exported Functions:
+    Set-VerboseProgress        - Toggle verbose progress output
+    Get-VerboseProgress        - Get verbose progress state
+    Start-ProgressOperation    - Initialize a progress operation with ETA tracking
+    Update-ProgressItem        - Update progress for current item
+    Complete-ProgressOperation - Complete progress operation and show summary
+    Show-ProgressBar           - Display console progress bar
+    Show-EnhancedProgress      - Show GUI-style progress dialog
+    Confirm-ProgressCleanup    - Ensure progress resources are cleaned up
+    Close-EnhancedProgress     - Close progress dialog
+    Set-ProgressMode           - Set progress display mode (GUI/Console)
+    Write-ProgressLog          - Write to progress log
+    Start-Download             - Download files with progress tracking
+    Start-AllOptimization      - Run all optimizations (main entry)
+    Start-FullSetup            - Full setup workflow (software + office + activation)
+    Start-MainMenu             - Display legacy main menu
+
+Notes:
+    - Progress tracking includes ETA calculation based on item timing
+    - Supports both console and GUI progress displays
+    - Thread-safe for use in parallel operations
+
+Version: 1.0.0
+#>
 
 # ============================================================================
 # ENHANCED PROGRESS TRACKING SYSTEM

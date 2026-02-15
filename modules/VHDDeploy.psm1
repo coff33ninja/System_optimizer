@@ -1,13 +1,47 @@
-# ============================================================================
-# VHDDeploy Module - System Optimizer
-# ============================================================================
-# VHD Native Boot Deployment Tool
-# ============================================================================
-# ============================================================================
-# VHD DEPLOYMENT TOOL - Native Boot VHD Creation
-# ============================================================================
-# Part of System Optimizer - https://github.com/coff33ninja/System_Optimizer
-# Based on Kari's DeployVHD script from TenForums.com
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    VHDDeploy Module - System Optimizer
+.DESCRIPTION
+    Provides VHD Native Boot deployment for dual/multi-boot configurations.
+    Creates and manages bootable VHD/VHDX files.
+
+Exported Functions:
+    Start-VHDMenu             - Interactive VHD deployment menu
+    New-VHDFile               - Create empty VHD/VHDX
+    Mount-VHDFile             - Mount VHD for access
+    Dismount-VHDFile          - Unmount VHD
+    Deploy-WindowsToVHD       - Deploy Windows to VHD
+    Add-VHDBootEntry          - Add VHD to boot menu
+    Inject-VHDDrivers         - Inject drivers into VHD
+    Enable-VHDFeatures        - Enable Hyper-V, WSL in VHD
+
+VHD Operations:
+    - Quick Deploy: Wizard for VHD creation
+    - Create Empty VHD: GPT or MBR format
+    - Mount/Dismount: Access VHD contents
+    - Deploy Windows: Install to VHD
+    - Driver Injection: Add drivers
+    - Feature Enable: Hyper-V, WSL
+    - Boot Menu: Add to BCD
+
+VHD Types:
+    - Fixed: Pre-allocated size
+    - Dynamic: Expands as needed
+    - Differencing: Parent/child disks
+
+Boot Support:
+    - Windows 10/11 Native Boot
+    - UEFI and Legacy BIOS
+    - Multiple VHD boot entries
+
+Work Directory:
+    C:\System_Optimizer\VHD\
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 # ============================================================================
 # Creates a bootable VHD/VHDX file for dual/multi-boot Windows installations
 # ============================================================================

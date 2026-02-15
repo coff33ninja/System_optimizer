@@ -1,6 +1,36 @@
-# ============================================================================
-# Telemetry Module - System Optimizer
-# ============================================================================
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Telemetry Module - System Optimizer
+.DESCRIPTION
+    Provides privacy and telemetry control functions for Windows 10/11.
+    Disables data collection, advertising, and diagnostic features.
+
+Exported Functions:
+    Disable-Telemetry          - Apply 35+ privacy tweaks
+    Block-TelemetryDomains     - Block telemetry via hosts file
+
+Tweaks Applied:
+    - Windows telemetry and diagnostics
+    - Advertising ID and personalization
+    - Activity history and timeline
+    - Cortana and web search
+    - Copilot and Recall (Windows 11)
+    - Feedback and error reporting
+    - PowerShell 7 telemetry
+    - Windows Update peer-to-peer
+    - Location services
+    - Speech recognition
+
+Registry Areas:
+    - HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection
+    - HKCU:\Software\Microsoft\Windows\CurrentVersion\Privacy
+    - HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer
+
+Requires Admin: Yes
+
+Version: 1.0.0
+#>
 
 function Disable-Telemetry {
     Write-Log "DISABLING TELEMETRY & PRIVACY TWEAKS" "SECTION"
