@@ -9,8 +9,8 @@
 Exported Functions:
     Disable-Services              - Disable unnecessary services (Safe/Aggressive)
     Sync-WinUtilServices          - Sync with Chris Titus Tech WinUtil
-    Apply-WinUtilServiceConfig    - Apply WinUtil service configuration
-    Preview-WinUtilServiceChanges - Preview changes before applying
+    Set-WinUtilServiceConfig      - Apply WinUtil service configuration
+    Show-WinUtilServiceChanges    - Preview changes before applying
     Export-CurrentServiceStates   - Export current service states
     Disable-TeamsStartup          - Disable Teams startup without removal
     Enable-TeamsStartup           - Re-enable Teams startup
@@ -263,7 +263,7 @@ function Sync-WinUtilServices {
                 Write-Log "Downloaded WinUtil config to: $LocalCache" "SUCCESS"
 
                 # Parse and apply
-                Apply-WinUtilServiceConfig -ConfigPath $LocalCache
+                Set-WinUtilServiceConfig -ConfigPath $LocalCache
             } catch {
                 Write-Log "Failed to download WinUtil config: $_" "ERROR"
                 Write-Log "Try using cached config (option 2) if available" "WARNING"
@@ -272,7 +272,7 @@ function Sync-WinUtilServices {
         "2" {
             if (Test-Path $LocalCache) {
                 Write-Log "Using cached WinUtil config..."
-                Apply-WinUtilServiceConfig -ConfigPath $LocalCache
+                Set-WinUtilServiceConfig -ConfigPath $LocalCache
             } else {
                 Write-Log "No cached config found. Please download first (option 1)" "ERROR"
             }
@@ -292,7 +292,7 @@ function Sync-WinUtilServices {
                 }
             }
 
-            Apply-WinUtilServiceConfig -ConfigPath $LocalCache
+            Set-WinUtilServiceConfig -ConfigPath $LocalCache
 
             # Then apply our aggressive tweaks on top
             Write-Log "Applying additional aggressive service disables..." "SECTION"
@@ -332,7 +332,7 @@ function Sync-WinUtilServices {
                 }
             }
 
-            Preview-WinUtilServiceChanges -ConfigPath $LocalCache
+            Show-WinUtilServiceChanges -ConfigPath $LocalCache
         }
         "5" {
             Export-CurrentServiceStates
@@ -349,7 +349,7 @@ function Sync-WinUtilServices {
     } while ($true)
 }
 
-function Apply-WinUtilServiceConfig {
+function Set-WinUtilServiceConfig {
     param([string]$ConfigPath)
 
     Write-Log "Parsing WinUtil service configuration..."
@@ -444,7 +444,7 @@ function Apply-WinUtilServiceConfig {
     }
 }
 
-function Preview-WinUtilServiceChanges {
+function Show-WinUtilServiceChanges {
     param([string]$ConfigPath)
 
     Write-Log "PREVIEW: WinUtil Service Changes" "SECTION"
@@ -746,8 +746,8 @@ Export-ModuleMember -Function @(
     'Disable-Services',
     'Show-ServicesMenu',
     'Sync-WinUtilServices',
-    'Apply-WinUtilServiceConfig',
-    'Preview-WinUtilServiceChanges',
+    'Set-WinUtilServiceConfig',
+    'Show-WinUtilServiceChanges',
     'Export-CurrentServiceStates',
     'Disable-TeamsStartup',
     'Enable-TeamsStartup'

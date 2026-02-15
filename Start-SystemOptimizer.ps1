@@ -477,47 +477,151 @@ function Update-ModulesFromGitHub {
 
 # Function to Module mapping for validation
 $script:FunctionModuleMap = @{
+    # Core Modules
     'Run-AllOptimizations' = 'Core'
+    'Run-FullSetup' = 'Core'
+    'Start-Download' = 'Core'
+    
+    # Telemetry & Privacy
     'Disable-Telemetry' = 'Telemetry'
+    'Block-TelemetryDomains' = 'Telemetry'
+    'Start-OOShutUp10' = 'Privacy'
+    'Start-AdvancedDebloat' = 'Privacy'
+    
+    # Services
     'Show-ServicesMenu' = 'Services'
+    'Disable-Services' = 'Services'
+    'Sync-WinUtilServices' = 'Services'
+    'Set-WinUtilServiceConfig' = 'Services'
+    'Show-WinUtilServiceChanges' = 'Services'
+    'Export-CurrentServiceStates' = 'Services'
+    'Disable-TeamsStartup' = 'Services'
+    'Enable-TeamsStartup' = 'Services'
+    
+    # Bloatware
     'DebloatBlacklist' = 'Bloatware'
+    'DebloatAll' = 'Bloatware'
+    'Protect-Privacy' = 'Bloatware'
+    'Restore-BloatwareChange' = 'Bloatware'
+    
+    # Tasks & Registry
     'Disable-ScheduledTasks' = 'Tasks'
     'Set-RegistryOptimizations' = 'Registry'
+    
+    # System Features
     'Disable-VBS' = 'VBS'
-    'Set-NetworkOptimizations' = 'Network'
     'Remove-OneDrive' = 'OneDrive'
+    'Set-PowerPlan' = 'Power'
+    'Set-NeverSleepOnAC' = 'Power'
+    
+    # Network
+    'Start-NetworkMenu' = 'Network'
+    'Set-NetworkOptimizations' = 'Network'
+    'Reset-Network' = 'Network'
+    'Get-WiFiNetwork' = 'Network'
+    'Get-NetworkAdapter' = 'Network'
+    'Set-ProxyConfiguration' = 'Network'
+    'Edit-HostsFile' = 'Network'
+    'Start-NetworkDiagnostic' = 'Network'
+    'Get-FirewallStatus' = 'Network'
+    'Test-NetworkSpeed' = 'Network'
+    'Set-NetworkProfile' = 'Network'
+    'Set-AdvancedTCPSetting' = 'Network'
+    
+    # Maintenance
+    'Start-MaintenanceMenu' = 'Maintenance'
     'Start-SystemMaintenance' = 'Maintenance'
+    'Start-DiskCleanup' = 'Maintenance'
+    'Reset-GroupPolicy' = 'Maintenance'
+    'Reset-WMI' = 'Maintenance'
+    'Start-CheckDisk' = 'Maintenance'
+    'Start-SystemRestore' = 'Maintenance'
+    'Start-BCDRepair' = 'Maintenance'
+    'Start-MemoryDiagnostic' = 'Maintenance'
+    'Get-DriveHealth' = 'Maintenance'
+    'Start-WindowsUpdateRepair' = 'Maintenance'
+    'Start-DISMRepair' = 'Maintenance'
+    'Start-DriveOptimization' = 'Maintenance'
+    'Start-TimeSyncRepair' = 'Maintenance'
+    'Start-SearchIndexRebuild' = 'Maintenance'
+    'Start-StartupProgramManager' = 'Maintenance'
+    
+    # Windows Update
+    'Set-WindowsUpdateControl' = 'WindowsUpdate'
+    'Repair-WindowsUpdate' = 'WindowsUpdate'
+    
+    # Drivers
+    'Start-SnappyDriverInstaller' = 'Drivers'
+    
+    # Security
+    'Set-DefenderControl' = 'Security'
+    'Enable-WindowsDefender' = 'Security'
+    
+    # Software
     'Start-PatchMyPC' = 'Software'
     'Start-OfficeTool' = 'Software'
     'Start-MAS' = 'Software'
-    'Get-WifiPasswords' = 'Utilities'
-    'Verify-OptimizationStatus' = 'Utilities'
-    'Run-FullSetup' = 'Core'
-    'Set-PowerPlan' = 'Power'
-    'Start-OOShutUp10' = 'Privacy'
-    'Reset-GroupPolicy' = 'Maintenance'
-    'Reset-WMI' = 'Maintenance'
-    'Start-DiskCleanup' = 'Maintenance'
-    'Set-WindowsUpdateControl' = 'WindowsUpdate'
-    'Start-SnappyDriverInstaller' = 'Drivers'
-    'Reset-Network' = 'Network'
-    'Repair-WindowsUpdate' = 'WindowsUpdate'
-    'Set-DefenderControl' = 'Security'
-    'DebloatAll' = 'Bloatware'
-    'Sync-WinUtilServices' = 'Services'
+    'Install-WingetPreset' = 'Software'
+    'Install-Chocolatey' = 'Software'
+    'Install-RustDesk' = 'Software'
+    'Install-AnyDesk' = 'Software'
+    
+    # UI Tweaks
     'Start-DISMStyleTweaks' = 'UITweaks'
-    'Start-ImageToolMenu' = 'ImageTool'
+    
+    # Utilities
+    'Get-WifiPasswords' = 'Utilities'
+    'Test-OptimizationStatus' = 'Utilities'
     'Show-LogViewer' = 'Utilities'
+    'Write-Log' = 'Utilities'
+    'Set-ConsoleSize' = 'Utilities'
+    
+    # Backup
     'Show-UserBackupMenu' = 'Backup'
+    'Start-UserProfileBackup' = 'Backup'
+    'Start-UserProfileRestore' = 'Backup'
+    
+    # Shutdown
     'Show-ShutdownMenu' = 'Shutdown'
+    'Invoke-ImmediateShutdown' = 'Shutdown'
+    'Invoke-ImmediateRestart' = 'Shutdown'
+    'Invoke-LogOff' = 'Shutdown'
+    'Invoke-LockWorkstation' = 'Shutdown'
+    'Invoke-Hibernate' = 'Shutdown'
+    'Invoke-Sleep' = 'Shutdown'
+    'Invoke-ForceShutdown' = 'Shutdown'
+    'Invoke-ForceRestart' = 'Shutdown'
+    'Set-ShutdownAtTime' = 'Shutdown'
+    'Set-RestartAtTime' = 'Shutdown'
+    'Set-ShutdownTimer' = 'Shutdown'
+    'Set-RestartTimer' = 'Shutdown'
+    'Show-ScheduledShutdowns' = 'Shutdown'
+    'Stop-ScheduledShutdown' = 'Shutdown'
+    
+    # Rollback
+    'Show-RollbackMenu' = 'Rollback'
+    'Initialize-RollbackSystem' = 'Rollback'
+    
+    # Hardware
+    'Show-HardwareSummary' = 'Hardware'
+    'Get-CPUInfo' = 'Hardware'
+    'Get-GPUInfo' = 'Hardware'
+    'Get-MemoryInfo' = 'Hardware'
+    'Get-StorageInfo' = 'Hardware'
+    
+    # Profiles
+    'Show-ProfileMenu' = 'Profiles'
+    'Get-SuggestedProfile' = 'Profiles'
+    'Get-ActiveProfile' = 'Profiles'
+    'Set-OptimizationProfile' = 'Profiles'
+    
+    # Deployment
     'Start-VHDMenu' = 'VHDDeploy'
     'Start-InstallerMenu' = 'Installer'
-    'Show-RollbackMenu' = 'Rollback'
-    'Show-HardwareSummary' = 'Hardware'
-    'Show-ProfileMenu' = 'Profiles'
-    'Protect-Privacy' = 'Bloatware'
-    'Start-MaintenanceMenu' = 'Maintenance'
-    'Start-NetworkMenu' = 'Network'
+    'Start-ImageToolMenu' = 'ImageTool'
+    
+    # Help
+    'Show-MenuHelp' = 'Help'
 }
 
 function Test-FunctionAvailable {
@@ -743,7 +847,7 @@ function Show-MainMenu {
     Write-Host ""
     
     Write-MenuItemCompact "6" "Registry Optimizations" 'Set-RegistryOptimizations'
-    Write-MenuItemCompact "15" "Verify Status" 'Verify-OptimizationStatus'
+    Write-MenuItemCompact "15" "Verify Status" 'Test-OptimizationStatus'
     Write-Host ""
     
     Write-MenuItemCompact "7" "Disable VBS/Memory" 'Disable-VBS'
@@ -829,7 +933,7 @@ function Start-MainMenu {
             "12" { Invoke-OptFunction 'Start-OfficeTool' }
             "13" { Invoke-OptFunction 'Start-MAS' }
             "14" { Invoke-OptFunction 'Get-WifiPasswords' }
-            "15" { Invoke-OptFunction 'Verify-OptimizationStatus' }
+            "15" { Invoke-OptFunction 'Test-OptimizationStatus' }
             "16" { Invoke-OptFunction 'Run-FullSetup' }
             "17" { Invoke-OptFunction 'Set-PowerPlan' }
             "18" { Invoke-OptFunction 'Start-OOShutUp10' }
@@ -935,7 +1039,7 @@ if ($RunOption) {
         
         # Utilities
         'wifi' = 'Get-WifiPasswords'
-        'verify' = 'Verify-OptimizationStatus'
+        'verify' = 'Test-OptimizationStatus'
         'logs' = 'Show-LogViewer'
         'backup' = 'Show-UserBackupMenu'
         'shutdown' = 'Show-ShutdownMenu'

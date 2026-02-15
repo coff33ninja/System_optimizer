@@ -8,7 +8,7 @@
 
 Exported Functions:
     Get-WifiPasswords           - Extract saved Wi-Fi passwords
-    Verify-OptimizationStatus   - Check current optimization status
+    Test-OptimizationStatus     - Check current optimization status
     Show-LogViewer              - Interactive log viewer
     Initialize-Logging          - Initialize logging (compatibility)
     Write-Log                   - Write log entry (wrapper)
@@ -41,8 +41,8 @@ function Get-WifiPasswords {
     }
 
     $wifiData = @()
-    foreach ($profile in $profiles) {
-        $profileInfo = netsh wlan show profile name="$profile" key=clear 2>$null
+    foreach ($wifiProfile in $profiles) {
+        $profileInfo = netsh wlan show profile name="$wifiProfile" key=clear 2>$null
         $password = ($profileInfo | Select-String "Key Content") -replace ".*:\s*", ""
 
         if ([string]::IsNullOrEmpty($password)) {
@@ -50,11 +50,11 @@ function Get-WifiPasswords {
         }
 
         $wifiData += [PSCustomObject]@{
-            SSID = $profile
+            SSID = $wifiProfile
             Password = $password
         }
 
-        Write-Log "SSID: $profile | Password: $password" "INFO"
+        Write-Log "SSID: $wifiProfile | Password: $password" "INFO"
     }
 
     # Save to file
@@ -67,7 +67,7 @@ function Get-WifiPasswords {
     $wifiData | Format-Table -AutoSize
 }
 
-function Verify-OptimizationStatus {
+function Test-OptimizationStatus {
     Write-Log "VERIFYING OPTIMIZATION STATUS" "SECTION"
 
     Write-Host ""
@@ -411,7 +411,7 @@ function Show-Menu {
 # Export functions
 Export-ModuleMember -Function @(
     'Get-WifiPasswords',
-    'Verify-OptimizationStatus',
+    'Test-OptimizationStatus',
     'Show-LogViewer',
     'Initialize-Logging',
     'Write-Log',

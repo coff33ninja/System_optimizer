@@ -6,13 +6,21 @@
     Provides power state controls and shutdown/restart options.
 
 Exported Functions:
-    Show-ShutdownMenu    - Interactive shutdown menu
-    Restart-Computer     - Restart with optional delay
-    Stop-Computer        - Shutdown with optional delay
-    Suspend-Computer     - Sleep/Standby
-    Hibernate-Computer   - Hibernate
-    Lock-Computer        - Lock workstation
-    SignOut-User         - Sign out current user
+    Show-ShutdownMenu         - Interactive shutdown menu
+    Invoke-ImmediateShutdown  - Immediate shutdown
+    Invoke-ImmediateRestart   - Immediate restart
+    Invoke-LogOff             - Log off current user
+    Invoke-LockWorkstation    - Lock workstation
+    Invoke-Hibernate          - Hibernate system
+    Invoke-Sleep              - Sleep/Standby
+    Invoke-ForceShutdown      - Force shutdown
+    Invoke-ForceRestart       - Force restart
+    Set-ShutdownAtTime        - Schedule shutdown at time
+    Set-RestartAtTime         - Schedule restart at time
+    Set-ShutdownTimer         - Schedule shutdown timer
+    Set-RestartTimer          - Schedule restart timer
+    Show-ScheduledShutdowns   - Show scheduled shutdowns
+    Stop-ScheduledShutdown    - Cancel scheduled shutdowns
 
 Power States:
     - Restart: Reboot system
@@ -72,16 +80,16 @@ function Show-ShutdownMenu {
             "2" { Invoke-ImmediateRestart }
             "3" { Invoke-LogOff }
             "4" { Invoke-LockWorkstation }
-            "5" { Schedule-ShutdownAtTime }
-            "6" { Schedule-RestartAtTime }
-            "7" { Schedule-ShutdownTimer }
-            "8" { Schedule-RestartTimer }
+            "5" { Set-ShutdownAtTime }
+            "6" { Set-RestartAtTime }
+            "7" { Set-ShutdownTimer }
+            "8" { Set-RestartTimer }
             "9" { Invoke-ForceShutdown }
             "10" { Invoke-ForceRestart }
             "11" { Invoke-Hibernate }
             "12" { Invoke-Sleep }
             "13" { Show-ScheduledShutdowns }
-            "14" { Cancel-AllScheduledShutdowns }
+            "14" { Stop-ScheduledShutdown }
             "0" { return }
             default { Write-Host "Invalid option" -ForegroundColor Red }
         }
@@ -184,7 +192,7 @@ function Invoke-LockWorkstation {
     rundll32.exe user32.dll,LockWorkStation
 }
 
-function Schedule-ShutdownAtTime {
+function Set-ShutdownAtTime {
     Write-Log "SCHEDULE SHUTDOWN AT SPECIFIC TIME" "SECTION"
     Write-Host ""
     Write-Host "Schedule shutdown at a specific time (24-hour format)" -ForegroundColor Cyan
@@ -225,7 +233,7 @@ function Schedule-ShutdownAtTime {
     }
 }
 
-function Schedule-RestartAtTime {
+function Set-RestartAtTime {
     Write-Log "SCHEDULE RESTART AT SPECIFIC TIME" "SECTION"
     Write-Host ""
     Write-Host "Schedule restart at a specific time (24-hour format)" -ForegroundColor Cyan
@@ -266,7 +274,7 @@ function Schedule-RestartAtTime {
     }
 }
 
-function Schedule-ShutdownTimer {
+function Set-ShutdownTimer {
     Write-Log "SCHEDULE SHUTDOWN TIMER" "SECTION"
     Write-Host ""
     Write-Host "Schedule shutdown after a specific number of minutes" -ForegroundColor Cyan
@@ -308,7 +316,7 @@ function Schedule-ShutdownTimer {
     }
 }
 
-function Schedule-RestartTimer {
+function Set-RestartTimer {
     Write-Log "SCHEDULE RESTART TIMER" "SECTION"
     Write-Host ""
     Write-Host "Schedule restart after a specific number of minutes" -ForegroundColor Cyan
@@ -475,7 +483,7 @@ function Show-ScheduledShutdowns {
     }
 }
 
-function Cancel-AllScheduledShutdowns {
+function Stop-ScheduledShutdown {
     Write-Log "CANCELLING SCHEDULED SHUTDOWNS" "SECTION"
     Write-Host ""
     Write-Host "This will cancel any pending shutdown/restart scheduled with shutdown.exe" -ForegroundColor Yellow
@@ -504,14 +512,14 @@ Export-ModuleMember -Function @(
     'Invoke-ImmediateRestart',
     'Invoke-LogOff',
     'Invoke-LockWorkstation',
-    'Schedule-ShutdownAtTime',
-    'Schedule-RestartAtTime',
-    'Schedule-ShutdownTimer',
-    'Schedule-RestartTimer',
+    'Set-ShutdownAtTime',
+    'Set-RestartAtTime',
+    'Set-ShutdownTimer',
+    'Set-RestartTimer',
     'Invoke-ForceShutdown',
     'Invoke-ForceRestart',
     'Invoke-Hibernate',
     'Invoke-Sleep',
     'Show-ScheduledShutdowns',
-    'Cancel-AllScheduledShutdowns'
+    'Stop-ScheduledShutdown'
 )
