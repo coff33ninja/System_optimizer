@@ -239,8 +239,8 @@ MENU NAVIGATION:
     [2]  Disable Telemetry        [3]  Disable Services
     [4]  Remove Bloatware         [5]  Disable Scheduled Tasks
     [6]  Registry Optimizations   [7]  Disable VBS/Memory Integrity
-    [8]  Network Optimizations    [9]  Remove OneDrive
-    [10] System Maintenance
+    [8]  Network Tools            [9]  Remove OneDrive
+    [10] Maintenance Tools
     
   Software & Activation:
     [11] Software Installation    [12] Office Tool Plus
@@ -248,12 +248,10 @@ MENU NAVIGATION:
     
   Advanced Tools:
     [17] Power Plan              [18] O&O ShutUp10
-    [19] Reset Group Policy      [20] Reset WMI
-    [21] Disk Cleanup            [22] Windows Update Control
-    [23] Driver Management       [24] Reset Network
-    [25] Repair Windows Update   [26] Defender Control
-    [27] Full Debloat           [28] WinUtil Service Sync
-    [29] Privacy Tweaks         [30] Windows Image Tool
+    [19] Windows Update Control  [20] Driver Management
+    [21] Repair Windows Update   [22] Defender Control
+    [23] Full Debloat           [24] WinUtil Service Sync
+    [25] Privacy Tweaks         [26] Windows Image Tool
     
   Deployment Tools:
     [34] VHD Native Boot         [35] Windows Installer
@@ -518,6 +516,8 @@ $script:FunctionModuleMap = @{
     'Show-HardwareSummary' = 'Hardware'
     'Show-ProfileMenu' = 'Profiles'
     'Protect-Privacy' = 'Bloatware'
+    'Start-MaintenanceMenu' = 'Maintenance'
+    'Start-NetworkMenu' = 'Network'
 }
 
 function Test-FunctionAvailable {
@@ -750,7 +750,7 @@ function Show-MainMenu {
     Write-MenuItemCompact "31" "View Logs" 'Show-LogViewer'
     Write-Host ""
     
-    Write-MenuItemCompact "8" "Network Optimizations" 'Set-NetworkOptimizations'
+    Write-MenuItemCompact "8" "Network Tools" 'Start-NetworkMenu'
     Write-MenuItemCompact "32" "Profile Backup" 'Show-UserBackupMenu'
     Write-Host ""
     
@@ -758,7 +758,7 @@ function Show-MainMenu {
     Write-MenuItemCompact "33" "Shutdown Options" 'Show-ShutdownMenu'
     Write-Host ""
     
-    Write-MenuItemCompact "10" "System Maintenance" 'Start-SystemMaintenance'
+    Write-MenuItemCompact "10" "Maintenance Tools" 'Start-MaintenanceMenu'
     Write-MenuItemCompact "34" "VHD Native Boot" 'Start-VHDMenu'
     Write-Host ""
     
@@ -771,42 +771,30 @@ function Show-MainMenu {
     Write-MenuItemCompact "36" "Undo/Rollback" 'Show-RollbackMenu'
     Write-Host ""
     
-    Write-MenuItemCompact "19" "Reset Group Policy" 'Reset-GroupPolicy'
+    Write-MenuItemCompact "19" "Windows Update" 'Set-WindowsUpdateControl'
     Write-MenuItemCompact "37" "Hardware Detection" 'Show-HardwareSummary'
     Write-Host ""
     
-    Write-MenuItemCompact "20" "Reset WMI" 'Reset-WMI'
+    Write-MenuItemCompact "20" "Driver Management" 'Start-SnappyDriverInstaller'
     Write-MenuItemCompact "38" "Optimization Profiles" 'Show-ProfileMenu'
     Write-Host ""
     
-    Write-MenuItemCompact "21" "Disk Cleanup" 'Start-DiskCleanup'
+    Write-MenuItemCompact "21" "Repair Updates" 'Repair-WindowsUpdate'
     Write-Host ""
     
-    Write-MenuItemCompact "22" "Windows Update" 'Set-WindowsUpdateControl'
+    Write-MenuItemCompact "22" "Defender Control" 'Set-DefenderControl'
     Write-Host ""
     
-    Write-MenuItemCompact "23" "Driver Management" 'Start-SnappyDriverInstaller'
+    Write-MenuItemCompact "23" "Full Debloat" 'DebloatAll'
     Write-Host ""
     
-    Write-MenuItemCompact "24" "Reset Network" 'Reset-Network'
+    Write-MenuItemCompact "24" "WinUtil Sync" 'Sync-WinUtilServices'
     Write-Host ""
     
-    Write-MenuItemCompact "25" "Repair Updates" 'Repair-WindowsUpdate'
+    Write-MenuItemCompact "25" "Privacy Tweaks" 'Start-DISMStyleTweaks'
     Write-Host ""
     
-    Write-MenuItemCompact "26" "Defender Control" 'Set-DefenderControl'
-    Write-Host ""
-    
-    Write-MenuItemCompact "27" "Full Debloat" 'DebloatAll'
-    Write-Host ""
-    
-    Write-MenuItemCompact "28" "WinUtil Sync" 'Sync-WinUtilServices'
-    Write-Host ""
-    
-    Write-MenuItemCompact "29" "Privacy Tweaks" 'Start-DISMStyleTweaks'
-    Write-Host ""
-    
-    Write-MenuItemCompact "30" "Image Tool" 'Start-ImageToolMenu'
+    Write-MenuItemCompact "26" "Image Tool" 'Start-ImageToolMenu'
     Write-Host ""
     
     Write-Host ("-" * 80) -ForegroundColor DarkGray
@@ -834,9 +822,9 @@ function Start-MainMenu {
             "5"  { Invoke-OptFunction 'Disable-ScheduledTasks' }
             "6"  { Invoke-OptFunction 'Set-RegistryOptimizations' }
             "7"  { Invoke-OptFunction 'Disable-VBS' }
-            "8"  { Invoke-OptFunction 'Set-NetworkOptimizations' }
+            "8"  { Invoke-OptFunction 'Start-NetworkMenu' }
             "9"  { Invoke-OptFunction 'Remove-OneDrive' }
-            "10" { Invoke-OptFunction 'Start-SystemMaintenance' }
+            "10" { Invoke-OptFunction 'Start-MaintenanceMenu' }
             "11" { Invoke-OptFunction 'Start-PatchMyPC' }
             "12" { Invoke-OptFunction 'Start-OfficeTool' }
             "13" { Invoke-OptFunction 'Start-MAS' }
@@ -845,18 +833,14 @@ function Start-MainMenu {
             "16" { Invoke-OptFunction 'Run-FullSetup' }
             "17" { Invoke-OptFunction 'Set-PowerPlan' }
             "18" { Invoke-OptFunction 'Start-OOShutUp10' }
-            "19" { Invoke-OptFunction 'Reset-GroupPolicy' }
-            "20" { Invoke-OptFunction 'Reset-WMI' }
-            "21" { Invoke-OptFunction 'Start-DiskCleanup' }
-            "22" { Invoke-OptFunction 'Set-WindowsUpdateControl' }
-            "23" { Invoke-OptFunction 'Start-SnappyDriverInstaller' }
-            "24" { Invoke-OptFunction 'Reset-Network' }
-            "25" { Invoke-OptFunction 'Repair-WindowsUpdate' }
-            "26" { Invoke-OptFunction 'Set-DefenderControl' }
-            "27" { Invoke-OptFunction 'DebloatAll' }                 # Bloatware.psm1 - advanced debloat
-            "28" { Invoke-OptFunction 'Sync-WinUtilServices' }
-            "29" { Invoke-OptFunction 'Start-DISMStyleTweaks' }      # UITweaks.psm1 - DISM++ style tweaks
-            "30" { Invoke-OptFunction 'Start-ImageToolMenu' }        # ImageTool.psm1
+            "19" { Invoke-OptFunction 'Set-WindowsUpdateControl' }
+            "20" { Invoke-OptFunction 'Start-SnappyDriverInstaller' }
+            "21" { Invoke-OptFunction 'Repair-WindowsUpdate' }
+            "22" { Invoke-OptFunction 'Set-DefenderControl' }
+            "23" { Invoke-OptFunction 'DebloatAll' }                 # Bloatware.psm1 - advanced debloat
+            "24" { Invoke-OptFunction 'Sync-WinUtilServices' }
+            "25" { Invoke-OptFunction 'Start-DISMStyleTweaks' }      # UITweaks.psm1 - DISM++ style tweaks
+            "26" { Invoke-OptFunction 'Start-ImageToolMenu' }        # ImageTool.psm1
             "31" { Invoke-OptFunction 'Show-LogViewer' }
             "32" { Invoke-OptFunction 'Show-UserBackupMenu' }        # Backup.psm1
             "33" { Invoke-OptFunction 'Show-ShutdownMenu' }
