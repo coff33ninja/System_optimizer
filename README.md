@@ -1,6 +1,6 @@
 # System Optimizer 🛠️
 
-A comprehensive Windows 10/11 optimization toolkit - 27 modules, 38 menu options, one EXE.
+A comprehensive Windows 10/11 optimization toolkit - 27 modules, 34 menu options, one EXE.
 
 > Replaces [AIO](https://github.com/coff33ninja/AIO) (archived) and [NexTool](https://github.com/coff33ninja/NexTool-Windows-Suite) (discontinued).
 
@@ -49,13 +49,13 @@ See [docs/FEATURES.md](docs/FEATURES.md) for detailed menu reference.
 
 ```
 Quick Actions:     [1] Run ALL  [16] Full Setup
-Core:              [2-10] Telemetry, Services, Bloatware, Tasks, Registry, VBS, Network, OneDrive, Maintenance
+Core:              [2-10] Telemetry, Services, Bloatware, Tasks, Registry, VBS, Network Tools, OneDrive, Maintenance Tools
 Software:          [11-13] Software Install, Office Tool, MAS
 Utilities:         [14-15] Wi-Fi Passwords, Verify Status
-Power & System:    [17-26] Power Plan, ShutUp10, GPO Reset, WMI, Cleanup, Updates, Drivers, Network Reset, Defender
-Advanced:          [27-30] Debloat Scripts, WinUtil Sync, UI Tweaks, Image Tool
-Tools:             [31-35] Logs, Backup, Shutdown, VHD Boot, Installer
-Management:        [36-38] Rollback, Hardware, Profiles
+Power & System:    [17-22] Power Plan, ShutUp10, Updates, Drivers, Repair Updates, Defender
+Advanced:          [23-26] Debloat Scripts, WinUtil Sync, UI Tweaks, Image Tool
+Tools:             [27-31] Logs, Backup, Shutdown, VHD Boot, Installer
+Management:        [32-34] Rollback, Hardware, Profiles
 ```
 
 ## Documentation

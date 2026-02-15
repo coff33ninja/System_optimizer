@@ -99,13 +99,32 @@ Disables virtualization-based security:
 
 **Warning:** Improves gaming performance but reduces security.
 
-### [8] Network Optimizations
-TCP/IP and adapter tweaks:
-- Disable IPv6 (optional)
-- Disable Nagle's algorithm
-- Disable network throttling
-- DNS optimization
-- TCP auto-tuning
+### [8] Network Tools
+Network management submenu with 11 options:
+
+**Optimizations:**
+- Apply network optimizations (IPv6, Nagle's, throttling)
+- Reset network configuration
+
+**Wi-Fi Management:**
+- Show saved networks
+- Show current connection
+- Forget networks
+- Signal strength display
+
+**Adapter & Configuration:**
+- Enable/disable adapters
+- Rename adapters
+- Proxy configuration
+- Hosts file editor
+
+**Diagnostics:**
+- Ping, traceroute, pathping
+- DNS lookup
+- Port checking
+- Firewall status
+- Network speed test
+- Advanced TCP settings
 
 ### [9] Remove OneDrive
 Complete OneDrive removal:
@@ -114,13 +133,35 @@ Complete OneDrive removal:
 - Disable via Group Policy
 - Clean up registry entries
 
-### [10] System Maintenance
-System health and cleanup:
+### [10] Maintenance Tools
+System maintenance submenu with 16 options:
+
+**Automated Maintenance:**
 - DISM RestoreHealth
 - SFC /scannow
 - Temporary file cleanup
 - Windows Update cache clear
-- Component store cleanup
+
+**Disk Management:**
+- Disk cleanup (Quick/Full/GUI modes)
+- Disk space report
+- Drive optimization (Defrag/TRIM)
+- Check disk (chkdsk)
+- Drive health (SMART)
+
+**System Repair:**
+- System restore
+- BCD/Boot repair
+- Memory diagnostic
+- Windows Update repair
+- DISM repair tools
+- Time sync repair
+- Search index rebuild
+
+**Advanced:**
+- Startup program manager
+- Reset Group Policy
+- Reset WMI
 
 ---
 
@@ -205,31 +246,7 @@ Privacy tool with recommended config:
 - Applies configs/ooshutup10.cfg
 - 100+ privacy settings
 
-### [19] Reset Group Policy
-Resets GPO to defaults:
-- Deletes registry policy keys
-- Removes GroupPolicy folders
-- Runs gpupdate /force
-
-### [20] Reset WMI
-Windows Management Instrumentation repair:
-
-**Quick Salvage:**
-- Verifies WMI repository
-- Attempts repair
-
-**Full Reset:**
-- Stops WMI service
-- Rebuilds repository
-- Re-registers DLLs
-
-### [21] Disk Cleanup
-Three cleanup modes:
-- **Quick:** Temp files, thumbnails
-- **Full:** + Windows Update, logs
-- **GUI:** Opens cleanmgr with all options
-
-### [22] Windows Update Control
+### [19] Windows Update Control
 8 options for update management:
 - Pause updates (registry method)
 - Pause updates (scheduled task)
@@ -240,7 +257,7 @@ Three cleanup modes:
 - Check for updates
 - View update history
 
-### [23] Driver Management
+### [20] Driver Management
 Driver tools:
 - Windows Update drivers
 - Snappy Driver Installer (SDI) Lite
@@ -248,22 +265,14 @@ Driver tools:
 - Backup drivers via DISM
 - Restore drivers from backup
 
-### [24] Network Reset
-Complete network stack reset:
-- WinSock reset
-- WinHTTP reset
-- IP configuration reset
-- DNS cache flush
-- Firewall reset (optional)
-
-### [25] Windows Update Repair
+### [21] Windows Update Repair
 Repairs broken Windows Update:
 - Stops update services
 - Clears update cache
 - Re-registers 36 DLLs
 - Restarts services
 
-### [26] Windows Defender Control
+### [22] Windows Defender Control
 Defender management:
 - Disable real-time protection
 - Enable real-time protection
@@ -271,13 +280,13 @@ Defender management:
 - Remove Defender (advanced)
 - Configure cloud protection
 
-### [27] Advanced Debloat Scripts
+### [23] Advanced Debloat Scripts
 Additional debloating:
 - Hosts file blocking (150+ telemetry domains)
 - Firewall rules for telemetry
 - Additional registry tweaks
 
-### [28] WinUtil Service Sync
+### [24] WinUtil Service Sync
 Syncs with Chris Titus Tech's WinUtil:
 - Downloads latest tweaks.json
 - Applies ~150 service configurations
@@ -285,7 +294,7 @@ Syncs with Chris Titus Tech's WinUtil:
 - Preview before applying
 - Export current states
 
-### [29] DISM++ Style Tweaks
+### [25] DISM++ Style Tweaks
 9 categories of UI tweaks:
 
 1. **Taskbar & Start Menu**
@@ -334,7 +343,7 @@ Syncs with Chris Titus Tech's WinUtil:
 
 ## Advanced Tools
 
-### [30] Windows Image Tool
+### [26] Windows Image Tool
 Complete Windows image management:
 
 - **Quick Create** - Wizard for custom ISO
@@ -346,7 +355,7 @@ Complete Windows image management:
 - **Create Bootable USB** - Format and copy
 - **WIM Optimization** - Cleanup, export, ESD→WIM
 
-### [31] View Logs
+### [27] View Logs
 Log management:
 - View current session log
 - Browse recent logs
@@ -356,7 +365,7 @@ Log management:
 
 Location: `C:\System_Optimizer\Logs\`
 
-### [32] User Profile Backup
+### [28] User Profile Backup
 Comprehensive backup system:
 
 **Backup Types:**
@@ -374,7 +383,7 @@ Comprehensive backup system:
 - Progress tracking
 - Integrity verification
 
-### [33] Shutdown Options
+### [29] Shutdown Options
 Power state controls:
 - Restart
 - Shutdown
@@ -383,7 +392,7 @@ Power state controls:
 - Sign out
 - Lock
 
-### [34] VHD Native Boot
+### [30] VHD Native Boot
 VHD deployment for dual/multi-boot:
 - Quick Deploy wizard
 - Create empty VHD (GPT/MBR)
@@ -393,7 +402,7 @@ VHD deployment for dual/multi-boot:
 - Enable features (Hyper-V, WSL)
 - Add to boot menu
 
-### [35] Windows Installer
+### [31] Windows Installer
 Deploy Windows to blank drives:
 - Disk preparation (diskpart scripts)
 - Single disk / Dual disk layouts
@@ -403,7 +412,7 @@ Deploy Windows to blank drives:
 - Quick Install wizard
 - Auto-creates System Optimizer shortcut
 
-### [36] Undo/Rollback Center
+### [32] Undo/Rollback Center
 Complete rollback system:
 - Session management
 - Registry change tracking
@@ -412,7 +421,7 @@ Complete rollback system:
 - System restore point integration
 - Interactive rollback menu
 
-### [37] Hardware Detection
+### [33] Hardware Detection
 System analysis:
 
 **CPU:**
@@ -435,7 +444,7 @@ System analysis:
 - XMP status
 - Per-stick details
 
-### [38] Optimization Profiles
+### [34] Optimization Profiles
 Hardware-based profiles:
 
 | Profile | Description |
