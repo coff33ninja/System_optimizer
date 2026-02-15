@@ -46,60 +46,27 @@ echo   SYSTEM OPTIMIZER - LAUNCH METHODS MENU
 echo ==================================================================================
 echo.
 echo   RECOMMENDED - Modular Version:
-echo   [1] Start-SystemOptimizer.ps1 (Local - Recommended)
-echo   [2] Start-SystemOptimizer.ps1 (Download from GitHub)
-echo.
-echo   Legacy - Monolithic Script:
-echo   [3] win11_ultimate_optimization.ps1 (Local)
-echo   [4] win11_ultimate_optimization.ps1 (Download from GitHub)
+echo   [1] Start-SystemOptimizer.ps1 (Download from GitHub)
 echo.
 echo   Command-Line Options (Modular):
-echo   [5] Run All Optimizations (non-interactive)
-echo   [6] Run Telemetry Disable Only
-echo   [7] Run Services Optimization Only
+echo   [2] Run All Optimizations (non-interactive)
+echo   [3] Run Telemetry Disable Only
+echo   [4] Run Services Optimization Only
 echo.
 echo   Epic Backup Adventure:
-echo   [8] Epic Backup Adventure (Smart Launch)
+echo   [5] Epic Backup Adventure (Smart Launch)
 echo.
 echo   [0] Exit
 echo.
-set /p choice="   Select method (0-8): "
+set /p choice="   Select method (0-5): "
 
-if "%choice%"=="1" goto modular_local
-if "%choice%"=="2" goto modular_download
-if "%choice%"=="3" goto legacy_local
-if "%choice%"=="4" goto legacy_download
-if "%choice%"=="5" goto run_all
-if "%choice%"=="6" goto run_telemetry
-if "%choice%"=="7" goto run_services
-if "%choice%"=="8" goto epic_backup
+if "%choice%"=="1" goto modular_download
+if "%choice%"=="2" goto run_all
+if "%choice%"=="3" goto run_telemetry
+if "%choice%"=="4" goto run_services
+if "%choice%"=="5" goto epic_backup
 if "%choice%"=="0" goto exit
 goto menu
-
-:modular_local
-cls
-echo.
-echo ==================================================================================
-echo   MODULAR VERSION - Local Execution (Recommended)
-echo ==================================================================================
-echo.
-if exist "Start-SystemOptimizer.ps1" (
-    if exist "modules\" (
-        echo   [+] Found Start-SystemOptimizer.ps1 and modules folder
-        echo   [*] Launching modular System Optimizer...
-        echo.
-        powershell -ExecutionPolicy Bypass -NoProfile -File ".\Start-SystemOptimizer.ps1"
-    ) else (
-        echo   [-] Modules folder not found!
-        echo   [*] Try option 2 to download from GitHub.
-        pause
-    )
-) else (
-    echo   [-] Start-SystemOptimizer.ps1 not found!
-    echo   [*] Try option 2 to download from GitHub.
-    pause
-)
-goto continue
 
 :modular_download
 cls
@@ -111,37 +78,6 @@ echo.
 echo   [*] Downloading Start-SystemOptimizer.ps1 and modules...
 echo.
 powershell -ExecutionPolicy Bypass -Command "try { $dest = \"$env:TEMP\SystemOptimizer\"; New-Item -ItemType Directory -Path $dest -Force | Out-Null; Write-Host '[*] Downloading entry point...' -ForegroundColor Yellow; irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/Start-SystemOptimizer.ps1' -OutFile \"$dest\Start-SystemOptimizer.ps1\"; Write-Host '[*] Downloading modules...' -ForegroundColor Yellow; $modules = @('Backup','Bloatware','Core','Drivers','Hardware','ImageTool','Installer','Logging','Maintenance','Network','OneDrive','Power','Privacy','Profiles','Registry','Rollback','Security','Services','Shutdown','Software','Tasks','Telemetry','UITweaks','Utilities','VBS','VHDDeploy','WindowsUpdate'); New-Item -ItemType Directory -Path \"$dest\modules\" -Force | Out-Null; foreach($m in $modules) { irm \"https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/modules/$m.psm1\" -OutFile \"$dest\modules\$m.psm1\" }; Write-Host '[+] Download complete!' -ForegroundColor Green; Set-Location $dest; & \"$dest\Start-SystemOptimizer.ps1\" } catch { Write-Host 'Error: ' $_.Exception.Message -ForegroundColor Red; pause }"
-goto continue
-
-:legacy_local
-cls
-echo.
-echo ==================================================================================
-echo   LEGACY VERSION - Local Execution
-echo ==================================================================================
-echo.
-if exist "win11_ultimate_optimization.ps1" (
-    echo   [+] Found win11_ultimate_optimization.ps1
-    echo   [*] Launching legacy System Optimizer...
-    echo.
-    powershell -ExecutionPolicy Bypass -NoProfile -File ".\win11_ultimate_optimization.ps1"
-) else (
-    echo   [-] win11_ultimate_optimization.ps1 not found!
-    echo   [*] Try option 4 to download from GitHub.
-    pause
-)
-goto continue
-
-:legacy_download
-cls
-echo.
-echo ==================================================================================
-echo   LEGACY VERSION - Download from GitHub
-echo ==================================================================================
-echo.
-echo   [*] Downloading win11_ultimate_optimization.ps1...
-echo.
-powershell -ExecutionPolicy Bypass -Command "try { irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/win11_ultimate_optimization.ps1' -OutFile \"$env:TEMP\optimize.ps1\"; Set-ExecutionPolicy Bypass -Scope Process -Force; & \"$env:TEMP\optimize.ps1\" } catch { Write-Host 'Error: ' $_.Exception.Message -ForegroundColor Red; pause }"
 goto continue
 
 :run_all
