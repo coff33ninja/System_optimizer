@@ -811,7 +811,7 @@ function Show-MainMenu {
     
     Write-Host ("-" * 80) -ForegroundColor DarkGray
     Write-Host "  Log: $LogFile" -ForegroundColor DarkGray
-    Write-Host "  [X] = Module not loaded  |  [U] Check for Updates" -NoNewline
+    Write-Host "  [?] Help  |  [X] = Module not loaded  |  [U] Check for Updates" -NoNewline
     if ($script:UpdateInfo.Available) {
         Write-Host " (v$($script:UpdateInfo.Latest) available!)" -ForegroundColor Magenta
     } else {
@@ -867,6 +867,13 @@ function Start-MainMenu {
             "38" { Invoke-OptFunction 'Show-ProfileMenu' }           # Profiles.psm1
             "U"  { Update-SystemOptimizer }
             "u"  { Update-SystemOptimizer }
+            "?"  { 
+                if (Get-Command 'Show-MenuHelp' -ErrorAction SilentlyContinue) {
+                    Show-MenuHelp
+                } else {
+                    Write-Host "`nHelp module not loaded. See docs\FEATURES.md for descriptions." -ForegroundColor Yellow
+                }
+            }
             "0"  { 
                 Write-Log "Exiting" "INFO"
                 return 
