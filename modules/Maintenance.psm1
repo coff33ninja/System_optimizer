@@ -1635,6 +1635,67 @@ function Start-StartupProgramManager {
     }
 }
 
+function Start-MaintenanceMenu {
+    <#
+    .SYNOPSIS
+        Maintenance tools menu
+    #>
+    do {
+        Set-ConsoleSize
+        Clear-Host
+        Write-Log "MAINTENANCE TOOLS" "SECTION"
+
+        Write-Host ""
+        Write-Host "  [1] Run Automated Maintenance (DISM, SFC, Cleanup)"
+        Write-Host "  [2] Disk Cleanup"
+        Write-Host "  [3] Disk Space Report"
+        Write-Host "  [4] Drive Optimization (Defrag/TRIM)"
+        Write-Host "  [5] Check Disk (chkdsk)"
+        Write-Host "  [6] System Restore"
+        Write-Host "  [7] BCD/Boot Repair"
+        Write-Host "  [8] Memory Diagnostic"
+        Write-Host "  [9] Drive Health (SMART)"
+        Write-Host "  [10] Windows Update Repair"
+        Write-Host "  [11] DISM Repair Tools"
+        Write-Host "  [12] Time Sync Repair"
+        Write-Host "  [13] Search Index Rebuild"
+        Write-Host "  [14] Startup Program Manager"
+        Write-Host "  [15] Reset Group Policy"
+        Write-Host "  [16] Reset WMI"
+        Write-Host "  [0] Back to Main Menu"
+        Write-Host ""
+
+        $choice = Read-Host "  Select an option"
+
+        switch ($choice) {
+            "1" { Start-SystemMaintenance }
+            "2" { Start-DiskCleanup }
+            "3" { Show-DiskSpaceReport }
+            "4" { Start-DriveOptimization }
+            "5" { Start-CheckDisk }
+            "6" { Start-SystemRestore }
+            "7" { Start-BCDRepair }
+            "8" { Start-MemoryDiagnostic }
+            "9" { Get-DriveHealth }
+            "10" { Start-WindowsUpdateRepair }
+            "11" { Start-DISMRepair }
+            "12" { Start-TimeSyncRepair }
+            "13" { Start-SearchIndexRebuild }
+            "14" { Start-StartupProgramManager }
+            "15" { Reset-GroupPolicy }
+            "16" { Reset-WMI }
+            "0" { return }
+            default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
+        }
+
+        if ($choice -ne "0") {
+            Write-Host ""
+            Write-Host "  Press any key to continue..." -ForegroundColor DarkGray
+            $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+        }
+    } while ($choice -ne "0")
+}
+
 # Export functions
 Export-ModuleMember -Function @(
     'Start-SystemMaintenance',
@@ -1653,5 +1714,6 @@ Export-ModuleMember -Function @(
     'Start-DriveOptimization',
     'Start-TimeSyncRepair',
     'Start-SearchIndexRebuild',
-    'Start-StartupProgramManager'
+    'Start-StartupProgramManager',
+    'Start-MaintenanceMenu'
 )
