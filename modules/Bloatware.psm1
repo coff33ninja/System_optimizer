@@ -173,6 +173,11 @@ Function DebloatAll {
     if ($hasProgress) {
         Complete-ProgressOperation
     }
+    
+    # Ensure progress cleanup to prevent UI issues
+    if (Get-Command 'Ensure-ProgressCleanup' -ErrorAction SilentlyContinue) {
+        Ensure-ProgressCleanup
+    }
 }
 
 <#
@@ -413,6 +418,11 @@ Function DebloatBlacklist {
 
     if ($hasProgress) {
         Complete-ProgressOperation
+    }
+    
+    # Ensure progress cleanup to prevent UI issues
+    if (Get-Command 'Ensure-ProgressCleanup' -ErrorAction SilentlyContinue) {
+        Ensure-ProgressCleanup
     }
 }
 

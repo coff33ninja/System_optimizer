@@ -443,54 +443,6 @@ function Ensure-ProgressCleanup {
     }
 }
 
-function Ensure-ProgressCleanup {
-    <#
-    .SYNOPSIS
-        Ensure all progress displays are properly closed and cleaned up
-    .DESCRIPTION
-        This function ensures that both the enhanced progress system and any
-        lingering Write-Progress displays are properly closed. Should be called
-        at the end of any operation that might have used progress displays.
-    #>
-    [CmdletBinding()]
-    param()
-
-    try {
-        # Close enhanced progress system
-        if (Get-Command 'Close-EnhancedProgress' -ErrorAction SilentlyContinue) {
-            Close-EnhancedProgress
-        }
-
-        # Clear any lingering Write-Progress displays
-        try {
-            Write-Progress -Activity "Cleanup" -Completed
-        } catch {
-            # Ignore if Write-Progress not supported
-        }
-
-        # Force cleanup of any GUI elements that might be stuck
-        if ($script:ProgressForm) {
-            try {
-                $script:ProgressForm.Close()
-                $script:ProgressForm.Dispose()
-                $script:ProgressForm = $null
-                $script:ProgressBar = $null
-                $script:ProgressLabel = $null
-                $script:UseGUIProgress = $false
-            } catch {
-                # Ignore disposal errors
-            }
-        }
-
-        # Force garbage collection to clean up any remaining GUI objects
-        [System.GC]::Collect()
-        [System.GC]::WaitForPendingFinalizers()
-
-    } catch {
-        # Silently ignore any cleanup errors
-    }
-}
-
 function Close-EnhancedProgress {
     <#
     .SYNOPSIS
@@ -520,8 +472,10 @@ function Close-EnhancedProgress {
         # Ignore if Write-Progress not supported
     }
 
-    # New line after console progress
-    Write-Host ""
+    # New line after console progress (only if not using GUI)
+    if (-not $script:UseGUIProgress) {
+        Write-Host ""
+    }
 }
 
 function Set-ProgressMode {
