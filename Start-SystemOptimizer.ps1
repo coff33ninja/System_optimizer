@@ -60,8 +60,8 @@ $script:Config = @{
     ModulesDir = if ($isEmbeddedEXE) { ".\modules" } else { "$scriptRoot\modules" }
     LogDir = "C:\System_Optimizer\Logs"
     BackupDir = "C:\System_Optimizer_Backup"
-    ConsoleWidth = 85
-    ConsoleHeight = 45
+    ConsoleWidth = 90
+    ConsoleHeight = 38
     GitHubRepo = "coff33ninja/System_Optimizer"
     GitHubBranch = "main"
 }
@@ -553,6 +553,25 @@ function Write-MenuItem {
     Write-Host " - $Description" -ForegroundColor $descColor
 }
 
+function Write-MenuItemCompact {
+    param(
+        [string]$Number,
+        [string]$Text,
+        [string]$FunctionName,
+        [int]$Width = 38
+    )
+
+    $available = Test-FunctionAvailable $FunctionName
+    $numColor = if ($available) { 'Cyan' } else { 'DarkGray' }
+    $textColor = if ($available) { 'White' } else { 'DarkGray' }
+    $marker = if ($available) { '' } else { ' [X]' }
+
+    $textPart = " $Text$marker".PadRight($Width - $Number.Length - 1)
+    Write-Host "  [" -ForegroundColor $textColor -NoNewline
+    Write-Host $Number -ForegroundColor $numColor -NoNewline
+    Write-Host "]$textPart" -ForegroundColor $textColor -NoNewline
+}
+
 function Invoke-OptFunction {
     param([string]$FunctionName)
     
@@ -652,7 +671,7 @@ function Get-QuickHardwareSummary {
 function Show-MainMenu {
     Set-ConsoleSize
     Clear-Host
-    Write-Host ("=" * 85) -ForegroundColor Cyan
+    Write-Host ("=" * 80) -ForegroundColor Cyan
     Write-Host "  SYSTEM OPTIMIZER v$($Config.Version)" -ForegroundColor Yellow -NoNewline
     
     # Check for updates (cached, don't check every time)
@@ -696,76 +715,103 @@ function Show-MainMenu {
         # Silently ignore profile errors
     }
     
-    Write-Host ("=" * 85) -ForegroundColor Cyan
+    Write-Host ("=" * 80) -ForegroundColor Cyan
     Write-Host ""
     
-    # Quick Actions
+    # Quick Actions (Full Width)
     Write-Host "  Quick Actions:" -ForegroundColor Green
-    Write-MenuItem "1" "Run ALL Optimizations       " "Apply all optimizations (telemetry, services, bloatware, etc.)" 'Run-AllOptimizations'
-    Write-MenuItem "16" "Full Setup                  " "Complete setup: software install + Office + activation" 'Run-FullSetup'
+    Write-MenuItem "1" "Run ALL Optimizations       " "Apply all optimizations" 'Run-AllOptimizations'
+    Write-MenuItem "16" "Full Setup                  " "Software + Office + Activation" 'Run-FullSetup'
     Write-Host ""
     
-    # Core Optimizations
-    Write-Host "  Core Optimizations:" -ForegroundColor Gray
-    Write-MenuItem "2" "Disable Telemetry           " "Stop data collection, ads, feedback, Cortana" 'Disable-Telemetry'
-    Write-MenuItem "3" "Disable Services            " "Turn off unnecessary Windows services (safe/aggressive)" 'Show-ServicesMenu'
-    Write-MenuItem "4" "Remove Bloatware            " "Uninstall pre-installed apps (Xbox, Mail, etc.)" 'DebloatBlacklist'
-    Write-MenuItem "5" "Disable Scheduled Tasks     " "Stop background maintenance tasks" 'Disable-ScheduledTasks'
-    Write-MenuItem "6" "Registry Optimizations      " "Performance tweaks, SSD optimization, memory tuning" 'Set-RegistryOptimizations'
-    Write-MenuItem "7" "Disable VBS/Memory Integrity" "Turn off virtualization security (gaming performance)" 'Disable-VBS'
-    Write-MenuItem "8" "Network Optimizations       " "TCP/IP tuning, DNS optimization, adapter tweaks" 'Set-NetworkOptimizations'
-    Write-MenuItem "9" "Remove OneDrive             " "Completely uninstall OneDrive cloud storage" 'Remove-OneDrive'
-    Write-MenuItem "10" "System Maintenance          " "DISM health check, SFC scan, temp file cleanup" 'Start-SystemMaintenance'
+    # Two-Column Layout for remaining options
+    Write-Host "  Core Optimizations:           Software & Tools:" -ForegroundColor Gray
+    Write-MenuItemCompact "2" "Disable Telemetry" 'Disable-Telemetry'
+    Write-MenuItemCompact "11" "Software Install" 'Start-PatchMyPC'
     Write-Host ""
     
-    # Software & Activation
-    Write-Host "  Software & Activation:" -ForegroundColor Gray
-    Write-MenuItem "11" "Software Installation       " "PatchMyPC, Winget packages, Chocolatey, security tools" 'Start-PatchMyPC'
-    Write-MenuItem "12" "Office Tool Plus            " "Download and install Microsoft Office" 'Start-OfficeTool'
-    Write-MenuItem "13" "Microsoft Activation (MAS)  " "Activate Windows and Office (open source script)" 'Run-MAS'
+    Write-MenuItemCompact "3" "Disable Services" 'Show-ServicesMenu'
+    Write-MenuItemCompact "12" "Office Tool Plus" 'Start-OfficeTool'
     Write-Host ""
     
-    # Advanced Tools
-    Write-Host "  Advanced Tools:" -ForegroundColor Gray
-    Write-MenuItem "17" "Power Plan                  " "High Performance, Ultimate Performance, or Balanced" 'Set-PowerPlan'
-    Write-MenuItem "18" "O&O ShutUp10                " "Privacy tool with 150+ Windows privacy settings" 'Start-OOShutUp10'
-    Write-MenuItem "19" "Reset Group Policy          " "Fix broken group policies and reset to defaults" 'Reset-GroupPolicy'
-    Write-MenuItem "20" "Reset WMI                   " "Repair Windows Management Instrumentation" 'Reset-WMI'
-    Write-MenuItem "21" "Disk Cleanup                " "Clean temp files, update cache, system files" 'Start-DiskCleanup'
-    Write-MenuItem "22" "Windows Update Control      " "Pause, resume, disable, or manage Windows Updates" 'Set-WindowsUpdateControl'
-    Write-MenuItem "23" "Driver Management           " "Snappy Driver Installer, backup/restore drivers" 'Start-SnappyDriverInstaller'
-    Write-MenuItem "24" "Reset Network               " "Reset TCP/IP, Winsock, DNS, firewall settings" 'Reset-Network'
-    Write-MenuItem "25" "Repair Windows Update       " "Fix broken Windows Update components" 'Repair-WindowsUpdate'
-    Write-MenuItem "26" "Defender Control            " "Manage Windows Defender, add exclusions" 'Set-DefenderControl'
-    Write-MenuItem "27" "Full Debloat (All Apps)     " "Remove ALL pre-installed apps (aggressive)" 'DebloatAll'
-    Write-MenuItem "28" "WinUtil Service Sync        " "Apply ChrisTitusTech WinUtil service configurations" 'Sync-WinUtilServices'
-    Write-MenuItem "29" "Privacy Tweaks              " "Advanced privacy settings and data collection controls" 'Start-DISMStyleTweaks'
-    Write-MenuItem "30" "Windows Image Tool          " "Create custom ISOs, modify Windows images, bootable USB" 'Start-ImageToolMenu'
+    Write-MenuItemCompact "4" "Remove Bloatware" 'DebloatBlacklist'
+    Write-MenuItemCompact "13" "MAS Activation" 'Run-MAS'
     Write-Host ""
     
-    # Deployment Tools
-    Write-Host "  Deployment Tools:" -ForegroundColor Gray
-    Write-MenuItem "34" "VHD Native Boot             " "Create bootable VHD for dual-boot or testing" 'Start-VHDMenu'
-    Write-MenuItem "35" "Windows Installer           " "Deploy Windows to blank drives with diskpart" 'Start-InstallerMenu'
+    Write-MenuItemCompact "5" "Disable Scheduled Tasks" 'Disable-ScheduledTasks'
+    Write-MenuItemCompact "14" "Wi-Fi Passwords" 'Get-WifiPasswords'
     Write-Host ""
     
-    # Utilities
-    Write-Host "  Utilities:" -ForegroundColor Gray
-    Write-MenuItem "14" "Wi-Fi Passwords             " "Extract saved Wi-Fi passwords from system" 'Get-WifiPasswords'
-    Write-MenuItem "15" "Verify Status               " "Check current optimization status and settings" 'Verify-OptimizationStatus'
-    Write-MenuItem "31" "View Logs                   " "Browse optimization logs and operation history" 'Show-LogViewer'
-    Write-MenuItem "32" "Profile Backup/Restore      " "Backup user data, browser profiles, application settings" 'Show-UserBackupMenu'
-    Write-MenuItem "33" "Shutdown Options            " "Immediate, scheduled, or timed shutdown/restart options" 'Show-ShutdownMenu'
-    Write-MenuItem "36" "Undo/Rollback Center        " "Undo previous optimizations and restore original settings" 'Show-RollbackMenu'
-    Write-MenuItem "37" "Hardware Detection          " "Detailed hardware analysis and compatibility check" 'Show-HardwareSummary'
-    Write-MenuItem "38" "Optimization Profiles       " "Gaming, Developer, Office profiles with auto-suggestions" 'Show-ProfileMenu'
+    Write-MenuItemCompact "6" "Registry Optimizations" 'Set-RegistryOptimizations'
+    Write-MenuItemCompact "15" "Verify Status" 'Verify-OptimizationStatus'
     Write-Host ""
     
+    Write-MenuItemCompact "7" "Disable VBS/Memory" 'Disable-VBS'
+    Write-MenuItemCompact "31" "View Logs" 'Show-LogViewer'
+    Write-Host ""
+    
+    Write-MenuItemCompact "8" "Network Optimizations" 'Set-NetworkOptimizations'
+    Write-MenuItemCompact "32" "Profile Backup" 'Show-UserBackupMenu'
+    Write-Host ""
+    
+    Write-MenuItemCompact "9" "Remove OneDrive" 'Remove-OneDrive'
+    Write-MenuItemCompact "33" "Shutdown Options" 'Show-ShutdownMenu'
+    Write-Host ""
+    
+    Write-MenuItemCompact "10" "System Maintenance" 'Start-SystemMaintenance'
+    Write-MenuItemCompact "34" "VHD Native Boot" 'Start-VHDMenu'
+    Write-Host ""
+    
+    Write-Host "  Advanced Tools:               Management:" -ForegroundColor Gray
+    Write-MenuItemCompact "17" "Power Plan" 'Set-PowerPlan'
+    Write-MenuItemCompact "35" "Windows Installer" 'Start-InstallerMenu'
+    Write-Host ""
+    
+    Write-MenuItemCompact "18" "O&O ShutUp10" 'Start-OOShutUp10'
+    Write-MenuItemCompact "36" "Undo/Rollback" 'Show-RollbackMenu'
+    Write-Host ""
+    
+    Write-MenuItemCompact "19" "Reset Group Policy" 'Reset-GroupPolicy'
+    Write-MenuItemCompact "37" "Hardware Detection" 'Show-HardwareSummary'
+    Write-Host ""
+    
+    Write-MenuItemCompact "20" "Reset WMI" 'Reset-WMI'
+    Write-MenuItemCompact "38" "Optimization Profiles" 'Show-ProfileMenu'
+    Write-Host ""
+    
+    Write-MenuItemCompact "21" "Disk Cleanup" 'Start-DiskCleanup'
+    Write-Host ""
+    
+    Write-MenuItemCompact "22" "Windows Update" 'Set-WindowsUpdateControl'
+    Write-Host ""
+    
+    Write-MenuItemCompact "23" "Driver Management" 'Start-SnappyDriverInstaller'
+    Write-Host ""
+    
+    Write-MenuItemCompact "24" "Reset Network" 'Reset-Network'
+    Write-Host ""
+    
+    Write-MenuItemCompact "25" "Repair Updates" 'Repair-WindowsUpdate'
+    Write-Host ""
+    
+    Write-MenuItemCompact "26" "Defender Control" 'Set-DefenderControl'
+    Write-Host ""
+    
+    Write-MenuItemCompact "27" "Full Debloat" 'DebloatAll'
+    Write-Host ""
+    
+    Write-MenuItemCompact "28" "WinUtil Sync" 'Sync-WinUtilServices'
+    Write-Host ""
+    
+    Write-MenuItemCompact "29" "Privacy Tweaks" 'Start-DISMStyleTweaks'
+    Write-Host ""
+    
+    Write-MenuItemCompact "30" "Image Tool" 'Start-ImageToolMenu'
+    Write-Host ""
+    
+    Write-Host ("-" * 80) -ForegroundColor DarkGray
     Write-Host "  Log: $LogFile" -ForegroundColor DarkGray
-    Write-Host "  " -NoNewline
-    Write-Host "[X] = Module not loaded" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  [U] Check for Updates" -NoNewline
+    Write-Host "  [X] = Module not loaded  |  [U] Check for Updates" -NoNewline
     if ($script:UpdateInfo.Available) {
         Write-Host " (v$($script:UpdateInfo.Latest) available!)" -ForegroundColor Magenta
     } else {
