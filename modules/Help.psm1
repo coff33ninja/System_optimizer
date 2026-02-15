@@ -60,7 +60,7 @@ function Initialize-HelpCache {
     .SYNOPSIS
         Parses FEATURES.md and caches menu item data
     #>
-    if ($script:MenuCache -ne $null) { return }
+    if ($null -ne $script:MenuCache) { return }
     
     $script:MenuCache = @{}
     
@@ -78,9 +78,9 @@ function Initialize-HelpCache {
     # Pattern matches: ### [Number] Title followed by description
     # Description continues until next ### or ## header
     $pattern = '###\s*\[(\d+)\]\s*(.+?)(?:\r?\n)+([\s\S]*?)(?=###|\r?\n##|$)'
-    $matches = [regex]::Matches($content, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    $regexMatches = [regex]::Matches($content, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
     
-    foreach ($match in $matches) {
+    foreach ($match in $regexMatches) {
         $number = $match.Groups[1].Value.Trim()
         $title = $match.Groups[2].Value.Trim()
         $description = $match.Groups[3].Value.Trim()
