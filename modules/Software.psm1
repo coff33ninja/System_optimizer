@@ -495,6 +495,9 @@ function Show-WingetGUI {
 }
 
 function Install-Chocolatey {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    
     Write-Log "INSTALLING CHOCOLATEY" "SECTION"
 
     # Check if already installed
@@ -505,15 +508,36 @@ function Install-Chocolatey {
         return
     }
 
+    # Security warning and confirmation
+    Write-Host "WARNING: This will download and execute a script from https://community.chocolatey.org" -ForegroundColor Yellow
+    Write-Host "This is the official Chocolatey installation method." -ForegroundColor Gray
+    Write-Host ""
+    
+    if (-not $PSCmdlet.ShouldProcess("Chocolatey from https://community.chocolatey.org/install.ps1", "Download and install")) {
+        Write-Host "Installation cancelled." -ForegroundColor Yellow
+        return
+    }
+
     Write-Host "Installing Chocolatey..." -ForegroundColor Yellow
     try {
         Set-ExecutionPolicy Bypass -Scope Process -Force
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')) | Out-Null
+        
+        # Download with timeout and validation
+        $webClient = New-Object System.Net.WebClient
+        $webClient.Headers.Add("User-Agent", "SystemOptimizer")
+        $installScript = $webClient.DownloadString('https://community.chocolatey.org/install.ps1')
+        
+        if ([string]::IsNullOrWhiteSpace($installScript)) {
+            throw "Downloaded script is empty"
+        }
+        
+        Invoke-Expression $installScript | Out-Null
         Write-Log "Chocolatey installed successfully" "SUCCESS"
         Write-Host "Please restart PowerShell to use choco commands." -ForegroundColor Yellow
     } catch {
         Write-Log "Failed to install Chocolatey: $_" "ERROR"
+        Write-Host "You can manually install from: https://chocolatey.org/install" -ForegroundColor Gray
     }
 }
 
@@ -892,8 +916,18 @@ function Start-OfficeTool {
         Write-Log "Error: $_" "ERROR"
         Write-Log "Trying web installer fallback..." "WARNING"
         try {
-            Invoke-Expression (Invoke-RestMethod https://officetool.plus) | Out-Null
-            Write-Log "Office Tool Plus launched via web installer" "SUCCESS"
+            Write-Host "WARNING: About to download and execute from https://officetool.plus" -ForegroundColor Yellow
+            $confirm = Read-Host "Continue? (y/N)"
+            if ($confirm -eq 'y' -or $confirm -eq 'Y') {
+                $otpScript = Invoke-RestMethod -Uri "https://officetool.plus" -TimeoutSec 30
+                if ([string]::IsNullOrWhiteSpace($otpScript)) {
+                    throw "Downloaded script is empty"
+                }
+                Invoke-Expression $otpScript | Out-Null
+                Write-Log "Office Tool Plus launched via web installer" "SUCCESS"
+            } else {
+                Write-Host "Web installer cancelled." -ForegroundColor Yellow
+            }
         } catch {
             Write-Log "Web installer also failed: $_" "ERROR"
             Write-Host "Manual download: https://otp.landian.vip/" -ForegroundColor Cyan
@@ -902,23 +936,42 @@ function Start-OfficeTool {
 }
 
 function Start-MAS {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    
     Write-Log "LAUNCHING MICROSOFT ACTIVATION SCRIPT" "SECTION"
 
     Write-Host ""
-    Write-Host "This will launch the Microsoft Activation Script (MAS)." -ForegroundColor Yellow
+    Write-Host "WARNING: This will download and execute code from https://get.activated.win" -ForegroundColor Red
+    Write-Host "This is the Microsoft Activation Script (MAS) used for Windows/Office activation." -ForegroundColor Yellow
     Write-Host "A new window will open with activation options." -ForegroundColor Yellow
     Write-Host ""
+    
+    if (-not $PSCmdlet.ShouldProcess("MAS from https://get.activated.win", "Download and execute")) {
+        Write-Host "Operation cancelled." -ForegroundColor Yellow
+        return
+    }
 
     try {
         # Updated MAS link as of 2025
         Write-Log "Downloading and running MAS from get.activated.win..."
-        Invoke-Expression (Invoke-RestMethod https://get.activated.win) | Out-Null
+        $masScript = Invoke-RestMethod -Uri "https://get.activated.win" -TimeoutSec 30
+        
+        if ([string]::IsNullOrWhiteSpace($masScript)) {
+            throw "Downloaded script is empty"
+        }
+        
+        Invoke-Expression $masScript | Out-Null
         Write-Log "MAS launched successfully" "SUCCESS"
     } catch {
         Write-Log "Primary method failed, trying alternative..." "WARNING"
         try {
             # Alternative method with DoH
-            Invoke-Expression (curl.exe -s --doh-url https://1.1.1.1/dns-query https://get.activated.win | Out-String) | Out-Null
+            $masScript = curl.exe -s --doh-url https://1.1.1.1/dns-query https://get.activated.win
+            if ([string]::IsNullOrWhiteSpace($masScript)) {
+                throw "Downloaded script is empty"
+            }
+            Invoke-Expression $masScript | Out-Null
             Write-Log "MAS launched via alternative method" "SUCCESS"
         } catch {
             Write-Log "Failed to launch MAS: $_" "ERROR"

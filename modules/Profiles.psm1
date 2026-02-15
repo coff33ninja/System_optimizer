@@ -411,11 +411,10 @@ function Set-OptimizationProfile {
         - Power.psm1: Set-PowerPlan
         - OneDrive.psm1: Remove-OneDrive
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
         [string]$Name,
-        [switch]$WhatIf,
         [switch]$Force
     )
 
@@ -432,7 +431,10 @@ function Set-OptimizationProfile {
     Write-Host ("=" * 65) -ForegroundColor Cyan
     Write-Host ""
 
-    if ($WhatIf) {
+    # Preview mode via WhatIf
+    if ($PSCmdlet.ShouldProcess($profileData.Name, "Apply optimization profile")) {
+        # Continue with application
+    } else {
         Write-Host "[PREVIEW MODE - No changes will be made]" -ForegroundColor Magenta
         Write-Host ""
         Show-ProfileActions -ProfileData $profileData

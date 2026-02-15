@@ -2,6 +2,32 @@
 
 All notable changes to System Optimizer will be documented in this file.
 
+## [Unreleased]
+
+### Code Quality & Standards
+- **PowerShell Approved Verbs** - Fixed all unapproved verb usages:
+  - `Apply-WinUtilServiceConfig` → `Set-WinUtilServiceConfig`
+  - `Preview-WinUtilServiceChanges` → `Show-WinUtilServiceChanges`
+  - `Schedule-ShutdownAtTime` → `Set-ShutdownAtTime`
+  - `Schedule-RestartAtTime` → `Set-RestartAtTime`
+  - `Schedule-ShutdownTimer` → `Set-ShutdownTimer`
+  - `Schedule-RestartTimer` → `Set-RestartTimer`
+  - `Cancel-AllScheduledShutdowns` → `Stop-ScheduledShutdown`
+  - `Verify-OptimizationStatus` → `Test-OptimizationStatus`
+- **Automatic Variable Fixes** - Fixed `$profile` variable conflict with PowerShell automatic variable
+- **ShouldProcess Support** - Added proper `-WhatIf` support to `Set-OptimizationProfile`
+- **Security Hardening** - Added safeguards to all `Invoke-Expression` calls with validation and user confirmation
+
+### Menu Architecture
+- **Consolidated Maintenance Menu** - Moved 5 maintenance items to sub-menu (reduced main menu from 38 to 34 items)
+- **Consolidated Network Menu** - Moved 2 network items to sub-menu
+- **Renumbered Menu Items** - Sequential numbering after consolidation
+
+### Documentation
+- **Module Documentation** - Added comprehensive comment-based help to all 27 modules
+- **FunctionModuleMap** - Expanded with all 80+ exported functions for auto-reload support
+- **Repository Skills** - Created 5 Qoder skills for development standards
+
 ## [1.0.0] - 2025-12-23
 
 ### Initial Release 🎉
