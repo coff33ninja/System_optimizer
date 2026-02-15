@@ -363,6 +363,12 @@ function Apply-WinUtilServiceConfig {
                         default { "Manual" }
                     }
 
+                    # Skip if already correct type
+                    if ($currentType -eq $targetType) {
+                        $skipped++
+                        continue
+                    }
+
                     # Apply the change
                     if ($targetType -eq "AutomaticDelayedStart") {
                         # Use sc.exe for delayed start

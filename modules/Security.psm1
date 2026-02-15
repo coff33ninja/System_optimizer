@@ -440,9 +440,11 @@ function Install-AllSecurityTools {
                     $success++
                 } else {
                     Write-Log "$($pkg.Name) failed or already installed" "WARNING"
+                    Write-Log "Output: $result" "DEBUG"
                 }
             } catch {
                 Write-Log "Error installing $($pkg.Name): $_" "WARNING"
+                Write-Log "Output: $result" "DEBUG"
             }
         }
 

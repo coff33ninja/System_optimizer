@@ -176,8 +176,14 @@ function Set-AdobeReaderAsDefault {
             # Set .pdf association
             $pdfPath = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pdf\UserChoice"
 
-            # Remove existing UserChoice (requires special handling)
-            # Windows protects UserChoice with a hash, so we use assoc/ftype or the Settings app
+            # Remove existing UserChoice (requires special handling due to hash protection)
+            try {
+                Remove-Item -Path $pdfPath -Force -Recurse -ErrorAction Stop
+                Write-Log "Removed existing PDF UserChoice" "SUCCESS"
+            } catch {
+                # UserChoice may be protected or not exist - continue with association
+                $null
+            }
 
             # Method 1: Try using DISM/deployment tools approach
             $assocPath = "HKCU:\SOFTWARE\Classes\.pdf"
@@ -280,7 +286,7 @@ function Install-WingetPreset {
         $current++
         Write-Host "[$current/$total] Installing $pkg..." -ForegroundColor Cyan
 
-        $result = winget install $pkg --accept-package-agreements --accept-source-agreements 2>&1
+        winget install $pkg --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Installed: $pkg" "SUCCESS"
             $success++
@@ -467,7 +473,7 @@ function Install-Chocolatey {
     try {
         Set-ExecutionPolicy Bypass -Scope Process -Force
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')) | Out-Null
         Write-Log "Chocolatey installed successfully" "SUCCESS"
         Write-Host "Please restart PowerShell to use choco commands." -ForegroundColor Yellow
     } catch {
@@ -538,7 +544,7 @@ function Install-RustDesk {
             try {
                 Set-ExecutionPolicy Bypass -Scope Process -Force
                 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-                iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+                Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')) | Out-Null
 
                 # Refresh PATH
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
@@ -580,7 +586,7 @@ function Install-RustDesk {
         Write-Host "Manual download: https://rustdesk.com/download" -ForegroundColor Cyan
     } else {
         # Create desktop shortcut for RustDesk
-        Create-RustDeskShortcut
+        New-RustDeskShortcut
     }
 }
 
@@ -619,7 +625,7 @@ function Install-AnyDesk {
             try {
                 Set-ExecutionPolicy Bypass -Scope Process -Force
                 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-                iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+                Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')) | Out-Null
 
                 # Refresh PATH
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
@@ -661,11 +667,11 @@ function Install-AnyDesk {
         Write-Host "Manual download: https://anydesk.com/download" -ForegroundColor Cyan
     } else {
         # Create desktop shortcut for AnyDesk
-        Create-AnyDeskShortcut
+        New-AnyDeskShortcut
     }
 }
 
-function Create-RustDeskShortcut {
+function New-RustDeskShortcut {
     Write-Log "Creating RustDesk desktop shortcut..."
 
     # Common installation paths for RustDesk
@@ -720,7 +726,7 @@ function Create-RustDeskShortcut {
     }
 }
 
-function Create-AnyDeskShortcut {
+function New-AnyDeskShortcut {
     Write-Log "Creating AnyDesk desktop shortcut..."
 
     # Common installation paths for AnyDesk
@@ -850,7 +856,7 @@ function Start-OfficeTool {
         Write-Log "Error: $_" "ERROR"
         Write-Log "Trying web installer fallback..." "WARNING"
         try {
-            irm https://officetool.plus | iex
+            Invoke-Expression (Invoke-RestMethod https://officetool.plus) | Out-Null
             Write-Log "Office Tool Plus launched via web installer" "SUCCESS"
         } catch {
             Write-Log "Web installer also failed: $_" "ERROR"
@@ -859,7 +865,7 @@ function Start-OfficeTool {
     }
 }
 
-function Run-MAS {
+function Start-MAS {
     Write-Log "LAUNCHING MICROSOFT ACTIVATION SCRIPT" "SECTION"
 
     Write-Host ""
@@ -870,13 +876,13 @@ function Run-MAS {
     try {
         # Updated MAS link as of 2025
         Write-Log "Downloading and running MAS from get.activated.win..."
-        irm https://get.activated.win | iex
+        Invoke-Expression (Invoke-RestMethod https://get.activated.win) | Out-Null
         Write-Log "MAS launched successfully" "SUCCESS"
     } catch {
         Write-Log "Primary method failed, trying alternative..." "WARNING"
         try {
             # Alternative method with DoH
-            iex (curl.exe -s --doh-url https://1.1.1.1/dns-query https://get.activated.win | Out-String)
+            Invoke-Expression (curl.exe -s --doh-url https://1.1.1.1/dns-query https://get.activated.win | Out-String) | Out-Null
             Write-Log "MAS launched via alternative method" "SUCCESS"
         } catch {
             Write-Log "Failed to launch MAS: $_" "ERROR"
@@ -913,8 +919,9 @@ Export-ModuleMember -Function @(
     'Install-ChocoGUI',
     'Install-RustDesk',
     'Install-AnyDesk',
-    'Create-RustDeskShortcut',
-    'Create-AnyDeskShortcut',
+    'New-RustDeskShortcut',
+    'New-AnyDeskShortcut',
     'Start-OfficeTool',
-    'Run-MAS'
+    'Start-MAS'
 )
+

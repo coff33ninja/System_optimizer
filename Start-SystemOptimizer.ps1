@@ -491,7 +491,7 @@ $script:FunctionModuleMap = @{
     'Start-SystemMaintenance' = 'Maintenance'
     'Start-PatchMyPC' = 'Software'
     'Start-OfficeTool' = 'Software'
-    'Run-MAS' = 'Software'
+    'Start-MAS' = 'Software'
     'Get-WifiPasswords' = 'Utilities'
     'Verify-OptimizationStatus' = 'Utilities'
     'Run-FullSetup' = 'Core'
@@ -735,7 +735,7 @@ function Show-MainMenu {
     Write-Host ""
     
     Write-MenuItemCompact "4" "Remove Bloatware" 'DebloatBlacklist'
-    Write-MenuItemCompact "13" "MAS Activation" 'Run-MAS'
+    Write-MenuItemCompact "13" "MAS Activation" 'Start-MAS'
     Write-Host ""
     
     Write-MenuItemCompact "5" "Disable Scheduled Tasks" 'Disable-ScheduledTasks'
@@ -839,7 +839,7 @@ function Start-MainMenu {
             "10" { Invoke-OptFunction 'Start-SystemMaintenance' }
             "11" { Invoke-OptFunction 'Start-PatchMyPC' }
             "12" { Invoke-OptFunction 'Start-OfficeTool' }
-            "13" { Invoke-OptFunction 'Run-MAS' }
+            "13" { Invoke-OptFunction 'Start-MAS' }
             "14" { Invoke-OptFunction 'Get-WifiPasswords' }
             "15" { Invoke-OptFunction 'Verify-OptimizationStatus' }
             "16" { Invoke-OptFunction 'Run-FullSetup' }
@@ -932,7 +932,7 @@ if ($RunOption) {
         # Software & Tools
         'software' = 'Start-PatchMyPC'
         'office' = 'Start-OfficeTool'
-        'activation' = 'Run-MAS'
+        'activation' = 'Start-MAS'
         'drivers' = 'Start-SnappyDriverInstaller'
         
         # Advanced Operations

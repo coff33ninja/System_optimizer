@@ -217,6 +217,21 @@ function Complete-ProgressOperation {
     # Clear progress bar
     Close-EnhancedProgress
 
+    # Show detailed results if requested
+    if ($ShowDetails -and $script:ProgressState.Results.Count -gt 0) {
+        Write-Host ""
+        Write-Host "  Detailed Results:" -ForegroundColor Cyan
+        $script:ProgressState.Results | ForEach-Object {
+            $color = switch ($_.Status) {
+                'Success' { 'Green' }
+                'Failed' { 'Red' }
+                'Skipped' { 'Yellow' }
+                default { 'Gray' }
+            }
+            Write-Host "    [$($_.Status)] $($_.ItemName)" -ForegroundColor $color
+        }
+    }
+
     # Calculate duration
     $duration = (Get-Date) - $script:ProgressState.StartTime
     $durationStr = if ($duration.TotalMinutes -ge 1) {
@@ -312,6 +327,7 @@ function Show-EnhancedProgress {
             return
         } catch {
             # Fall back to other methods if Write-Progress fails
+            $null
         }
     }
 
@@ -378,6 +394,7 @@ function Show-EnhancedProgress {
         }
     } catch {
         # Continue to fallback method
+        $null
     }
 
     # Method 4: Fallback to Unicode characters
@@ -389,13 +406,14 @@ function Show-EnhancedProgress {
         Write-Host "`r[$bar] $Percent%$statusText" -NoNewline
     } catch {
         # Final fallback to basic ASCII
+        $null
         $bar = "#" * $filled + "-" * $empty
         $statusText = if ($Status) { " $Activity - $Status" } else { " $Activity" }
         Write-Host "`r[$bar] $Percent%$statusText" -NoNewline
     }
 }
 
-function Ensure-ProgressCleanup {
+function Confirm-ProgressCleanup {
     <#
     .SYNOPSIS
         Ensure all progress displays are properly closed and cleaned up
@@ -418,6 +436,7 @@ function Ensure-ProgressCleanup {
             Write-Progress -Activity "Cleanup" -Completed
         } catch {
             # Ignore if Write-Progress not supported
+            $null
         }
 
         # Force cleanup of any GUI elements that might be stuck
@@ -431,6 +450,7 @@ function Ensure-ProgressCleanup {
                 $script:UseGUIProgress = $false
             } catch {
                 # Ignore disposal errors
+                $null
             }
         }
 
@@ -440,6 +460,7 @@ function Ensure-ProgressCleanup {
 
     } catch {
         # Silently ignore any cleanup errors
+        $null
     }
 }
 
@@ -458,6 +479,7 @@ function Close-EnhancedProgress {
             $script:ProgressForm.Dispose()
         } catch {
             # Ignore disposal errors
+            $null
         }
         $script:ProgressForm = $null
         $script:ProgressBar = $null
@@ -470,6 +492,7 @@ function Close-EnhancedProgress {
         Write-Progress -Activity "Complete" -Completed
     } catch {
         # Ignore if Write-Progress not supported
+        $null
     }
 
     # New line after console progress (only if not using GUI)
@@ -597,6 +620,7 @@ function Start-Download {
                 return $true
             } catch {
                 # Fall back to WebRequest if BITS fails
+                $null
             }
         }
 
@@ -695,7 +719,7 @@ function Start-Download {
     }
 }
 
-function Run-AllOptimizations {
+function Start-AllOptimization {
     Write-Log "RUNNING ALL OPTIMIZATIONS" "SECTION"
     Write-Host ""
     Write-Host "This will apply ALL optimizations. Some changes require a reboot." -ForegroundColor Yellow
@@ -741,7 +765,7 @@ function Run-AllOptimizations {
     }
 }
 
-function Run-FullSetup {
+function Start-FullSetup {
     Write-Log "RUNNING FULL SETUP WORKFLOW" "SECTION"
     Write-Host ""
     Write-Host "This will run the full setup workflow:" -ForegroundColor Yellow
@@ -783,7 +807,7 @@ function Run-FullSetup {
     Write-Host ""
     Write-Host "=== STEP 4: Microsoft Activation Script ===" -ForegroundColor Cyan
     Write-Host "Activate Windows and Office." -ForegroundColor Gray
-    Run-MAS
+    Start-MAS
 
     Write-Host ""
     Write-Log "FULL SETUP WORKFLOW COMPLETED" "SECTION"
@@ -796,7 +820,7 @@ function Start-MainMenu {
         $choice = Read-Host "Select an option"
 
         switch ($choice) {
-            "1" { Run-AllOptimizations }
+            "1" { Start-AllOptimization }
             "2" { Disable-Telemetry }
             "3" { Disable-Services }
             "4" { Remove-BloatwareApps }
@@ -808,10 +832,10 @@ function Start-MainMenu {
             "10" { Start-SystemMaintenance }
             "11" { Start-PatchMyPC }
             "12" { Start-OfficeTool }
-            "13" { Run-MAS }
+            "13" { Start-MAS }
             "14" { Get-WifiPasswords }
             "15" { Verify-OptimizationStatus }
-            "16" { Run-FullSetup }
+            "16" { Start-FullSetup }
             "17" { Set-PowerPlan }
             "18" { Start-OOShutUp10 }
             "19" { Reset-GroupPolicy }
@@ -846,8 +870,8 @@ function Start-MainMenu {
 
 # Export functions
 Export-ModuleMember -Function @(
-    'Run-AllOptimizations',
-    'Run-FullSetup',
+    'Start-AllOptimization',
+    'Start-FullSetup',
     'Start-MainMenu',
     # Progress helpers
     'Start-ProgressOperation',
@@ -856,7 +880,7 @@ Export-ModuleMember -Function @(
     'Show-ProgressBar',
     'Show-EnhancedProgress',
     'Close-EnhancedProgress',
-    'Ensure-ProgressCleanup',
+    'Confirm-ProgressCleanup',
     'Set-ProgressMode',
     'Write-ProgressLog',
     'Set-VerboseProgress',
