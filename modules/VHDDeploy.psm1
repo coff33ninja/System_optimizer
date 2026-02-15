@@ -631,15 +631,38 @@ function Start-QuickVHDDeploy {
 
     # Add System Optimizer shortcut
     Write-VHDLog "Adding System Optimizer shortcut..."
-    $shortcutContent = @"
-@echo off
-powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/win11_ultimate_optimization.ps1' | iex"
-pause
+    $defaultDesktop = "W:\Users\Default\Desktop"
+    $publicDesktop = "W:\Users\Public\Desktop"
+    New-Item -ItemType Directory -Force -Path $defaultDesktop | Out-Null
+    New-Item -ItemType Directory -Force -Path $publicDesktop | Out-Null
+
+    # Create .lnk shortcut using VBScript
+    try {
+        $vbsContent = @"
+Set WshShell = CreateObject("WScript.Shell")
+Set shortcut = WshShell.CreateShortcut("$defaultDesktop\System Optimizer.lnk")
+shortcut.TargetPath = "powershell.exe"
+shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
+shortcut.Description = "System Optimizer - Windows Optimization Toolkit"
+shortcut.WorkingDirectory = "%USERPROFILE%"
+shortcut.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
+shortcut.Save
+
+Set shortcut2 = WshShell.CreateShortcut("$publicDesktop\System Optimizer.lnk")
+shortcut2.TargetPath = "powershell.exe"
+shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
+shortcut2.Description = "System Optimizer - Windows Optimization Toolkit"
+shortcut2.WorkingDirectory = "%USERPROFILE%"
+shortcut2.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
+shortcut2.Save
 "@
-    New-Item -ItemType Directory -Force -Path "W:\Users\Default\Desktop" | Out-Null
-    New-Item -ItemType Directory -Force -Path "W:\Users\Public\Desktop" | Out-Null
-    $shortcutContent | Out-File -FilePath "W:\Users\Default\Desktop\System Optimizer.cmd" -Encoding ASCII -Force
-    $shortcutContent | Out-File -FilePath "W:\Users\Public\Desktop\System Optimizer.cmd" -Encoding ASCII -Force
+        $vbsPath = "$env:TEMP\create_shortcut_vhd.vbs"
+        $vbsContent | Out-File -FilePath $vbsPath -Encoding ASCII -Force
+        & cscript.exe //nologo $vbsPath
+        Write-VHDLog "Desktop shortcut created" "SUCCESS"
+    } catch {
+        Write-VHDLog "Could not create shortcut: $($_.Exception.Message)" "WARNING"
+    }
 
     Write-VHDLog "VHD deployment complete!" "SUCCESS"
 

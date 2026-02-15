@@ -853,7 +853,7 @@ function Create-UnattendFile {
             <FirstLogonCommands>
                 <SynchronousCommand wcm:action="add">
                     <Order>1</Order>
-                    <CommandLine>powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/win11_ultimate_optimization.ps1' | iex"</CommandLine>
+                    <CommandLine>powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile '$env:TEMP\SystemOptimizer.bat'; & '$env:TEMP\SystemOptimizer.bat'"</CommandLine>
                     <Description>Run System Optimizer</Description>
                 </SynchronousCommand>
             </FirstLogonCommands>
@@ -900,46 +900,35 @@ function Create-SystemOptimizerShortcut {
     New-Item -ItemType Directory -Force -Path $defaultDesktop -ErrorAction SilentlyContinue | Out-Null
     New-Item -ItemType Directory -Force -Path $publicDesktop -ErrorAction SilentlyContinue | Out-Null
 
-    # Create the PowerShell command shortcut
-    $shortcutContent = @"
-@echo off
-powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/win11_ultimate_optimization.ps1' | iex"
-pause
-"@
-
-    # Save as .cmd file (more reliable than .lnk in offline images)
-    $shortcutContent | Out-File -FilePath "$defaultDesktop\System Optimizer.cmd" -Encoding ASCII -Force
-    $shortcutContent | Out-File -FilePath "$publicDesktop\System Optimizer.cmd" -Encoding ASCII -Force
-
-    Write-ImageLog "Desktop shortcut created in Default and Public profiles" "SUCCESS"
-
-    # Also create a proper .lnk shortcut using VBScript method
+    # Create a proper .lnk shortcut that downloads and runs the batch file
     try {
         $vbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
 Set shortcut = WshShell.CreateShortcut("$defaultDesktop\System Optimizer.lnk")
 shortcut.TargetPath = "powershell.exe"
-shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/win11_ultimate_optimization.ps1' | iex"""
+shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
 shortcut.Description = "System Optimizer - Windows Optimization Toolkit"
 shortcut.WorkingDirectory = "%USERPROFILE%"
+shortcut.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
 shortcut.Save
 
 Set shortcut2 = WshShell.CreateShortcut("$publicDesktop\System Optimizer.lnk")
 shortcut2.TargetPath = "powershell.exe"
-shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/win11_ultimate_optimization.ps1' | iex"""
+shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
 shortcut2.Description = "System Optimizer - Windows Optimization Toolkit"
 shortcut2.WorkingDirectory = "%USERPROFILE%"
+shortcut2.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
 shortcut2.Save
 "@
         $vbsPath = "$env:TEMP\create_shortcut.vbs"
         $vbsContent | Out-File -FilePath $vbsPath -Encoding ASCII -Force
 
-        # Note: VBS won't work for offline image, but .cmd will
-        # The .lnk creation is attempted but may fail for offline images
+        # Execute VBS to create .lnk files
+        & cscript.exe //nologo $vbsPath
 
-        Write-ImageLog "Shortcut files created (.cmd and attempted .lnk)" "SUCCESS"
+        Write-ImageLog "Desktop shortcut created in Default and Public profiles" "SUCCESS"
     } catch {
-        Write-ImageLog "Could not create .lnk shortcut, .cmd file is available" "WARNING"
+        Write-ImageLog "Could not create shortcut: $($_.Exception.Message)" "WARNING"
     }
 }
 
@@ -1566,7 +1555,7 @@ function Start-QuickCustomISO {
             <FirstLogonCommands>
                 <SynchronousCommand wcm:action="add">
                     <Order>1</Order>
-                    <CommandLine>powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/win11_ultimate_optimization.ps1' | iex"</CommandLine>
+                    <CommandLine>powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile '$env:TEMP\SystemOptimizer.bat'; & '$env:TEMP\SystemOptimizer.bat'"</CommandLine>
                     <Description>Run System Optimizer</Description>
                 </SynchronousCommand>
             </FirstLogonCommands>
