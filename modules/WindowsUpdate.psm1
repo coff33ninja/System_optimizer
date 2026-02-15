@@ -60,7 +60,7 @@ function Set-WindowsUpdateControl {
             Write-Log "Windows Update settings opened" "SUCCESS"
         }
         "6" {
-            Install-WindowsUpdates
+            Install-WindowsUpdate
         }
         "7" {
             # AIO WUpdater GUI tool
@@ -148,7 +148,7 @@ function Start-WUpdater {
     }
 }
 
-function Install-WindowsUpdates {
+function Install-WindowsUpdate {
     Set-ConsoleSize
     Clear-Host
     Write-Log "INSTALLING WINDOWS UPDATES VIA POWERSHELL" "SECTION"
@@ -356,7 +356,10 @@ function Repair-WindowsUpdate {
                 wuauclt /resetauthorization /detectnow 2>$null
                 try {
                     (New-Object -ComObject Microsoft.Update.AutoUpdate).DetectNow()
-                } catch { }
+                } catch {
+                    # COM object may not be available on all systems
+                    $null
+                }
 
                 Write-Log "Full repair completed" "SUCCESS"
                 Write-Host ""
@@ -375,7 +378,7 @@ Export-ModuleMember -Function @(
     'Set-WindowsUpdateControl',
     'Set-UpdatePauseTask',
     'Start-WUpdater',
-    'Install-WindowsUpdates',
+    'Install-WindowsUpdate',
     'Update-DriversViaWindowsUpdate',
     'Repair-WindowsUpdate'
 )

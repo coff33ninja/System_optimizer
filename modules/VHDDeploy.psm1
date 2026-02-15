@@ -80,10 +80,13 @@ function Set-ConsoleSize {
             $windowSize.Height = $Height
             $Host.UI.RawUI.WindowSize = $windowSize
         }
-    } catch { }
+    } catch {
+        # Window resize not critical - continue silently
+        $null
+    }
 }
 
-function Initialize-VHDDirectories {
+function Initialize-VHDDirectory {
     Initialize-VHDLogging
     Set-ConsoleSize
     @($WorkDir, $MountDir, $DriverDir) | ForEach-Object {
@@ -201,7 +204,10 @@ function Start-CreateEmptyVHD {
         if ($overwrite -ne "Y" -and $overwrite -ne "y") { return }
 
         # Try to dismount first
-        try { Dismount-VHD -Path $vhdPath -ErrorAction SilentlyContinue } catch { }
+        try { Dismount-VHD -Path $vhdPath -ErrorAction SilentlyContinue } catch {
+            # VHD may not be mounted - continue
+            $null
+        }
         Remove-Item $vhdPath -Force -ErrorAction SilentlyContinue
     }
 
@@ -304,7 +310,7 @@ function Dismount-ExistingVHD {
 # ============================================================================
 # WINDOWS DEPLOYMENT TO VHD
 # ============================================================================
-function Deploy-WindowsToVHD {
+function Install-WindowsToVHD {
     Write-VHDLog "DEPLOY WINDOWS TO VHD" "SECTION"
 
     # Check for mounted VHD with W: drive
@@ -415,7 +421,7 @@ function Add-VHDToBootMenu {
     Write-VHDLog "Creating boot entry..."
 
     # Create boot files
-    $result = & W:\Windows\System32\bcdboot.exe W:\Windows
+    & W:\Windows\System32\bcdboot.exe W:\Windows | Out-Null
 
     if ($LASTEXITCODE -eq 0) {
         # Rename boot entry
@@ -481,7 +487,7 @@ function Add-DriversToVHD {
 # ============================================================================
 # FEATURE ENABLEMENT
 # ============================================================================
-function Enable-VHDFeatures {
+function Enable-VHDFeature {
     Set-ConsoleSize
     Clear-Host
     Write-VHDLog "ENABLE WINDOWS FEATURES" "SECTION"
@@ -553,7 +559,10 @@ function Start-QuickVHDDeploy {
 
     # Check if exists
     if (Test-Path $vhdPath) {
-        try { Dismount-VHD -Path $vhdPath -ErrorAction SilentlyContinue } catch { }
+        try { Dismount-VHD -Path $vhdPath -ErrorAction SilentlyContinue } catch {
+            # VHD may not be mounted - continue
+            $null
+        }
         Remove-Item $vhdPath -Force -ErrorAction SilentlyContinue
     }
 
@@ -683,7 +692,7 @@ shortcut2.Save
 # MAIN MENU LOOP
 # ============================================================================
 function Start-VHDMenu {
-    Initialize-VHDDirectories
+    Initialize-VHDDirectory
 
     do {
         Show-VHDMenu
@@ -695,10 +704,10 @@ function Start-VHDMenu {
             "3" { Start-CreateEmptyVHD -Style "MBR" }
             "4" { Mount-ExistingVHD }
             "5" { Dismount-ExistingVHD }
-            "6" { Deploy-WindowsToVHD }
+            "6" { Install-WindowsToVHD }
             "7" { Add-VHDToBootMenu }
             "8" { Add-DriversToVHD }
-            "9" { Enable-VHDFeatures }
+            "9" { Enable-VHDFeature }
             "0" { return }
             default { Write-Host "Invalid option" -ForegroundColor Red }
         }
@@ -724,10 +733,10 @@ Export-ModuleMember -Function @(
     'Start-CreateEmptyVHD',
     'Mount-ExistingVHD',
     'Dismount-ExistingVHD',
-    'Deploy-WindowsToVHD',
+    'Install-WindowsToVHD',
     'Add-VHDToBootMenu',
     'Add-DriversToVHD',
-    'Enable-VHDFeatures',
+    'Enable-VHDFeature',
     'Start-QuickVHDDeploy',
     'Start-VHDMenu'
 )
