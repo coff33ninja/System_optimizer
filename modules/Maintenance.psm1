@@ -1160,6 +1160,481 @@ function Start-DISMRepair {
     }
 }
 
+function Start-DriveOptimization {
+    <#
+    .SYNOPSIS
+        Optimize drives - defrag HDDs, TRIM SSDs, with automatic media type detection
+    #>
+    Set-ConsoleSize
+    Clear-Host
+    Write-Log "DRIVE OPTIMIZATION" "SECTION"
+
+    Write-Host ""
+    Write-Host "  Analyzing drives..." -ForegroundColor Gray
+    Write-Host ""
+
+    # Get all fixed drives with media type
+    $drives = Get-PhysicalDisk | Where-Object { $_.BusType -ne 'USB' -and $_.BusType -ne 'File Backed Virtual' } | ForEach-Object {
+        $physicalDisk = $_
+        $partition = Get-Partition -DiskNumber $physicalDisk.DeviceId | Where-Object { $_.Type -eq 'Basic' -and $_.DriveLetter } | Select-Object -First 1
+        if ($partition) {
+            [PSCustomObject]@{
+                DriveLetter = $partition.DriveLetter
+                MediaType = $physicalDisk.MediaType
+                FriendlyName = $physicalDisk.FriendlyName
+                SizeGB = [math]::Round($physicalDisk.Size / 1GB, 2)
+                IsOptimized = $false
+            }
+        }
+    }
+
+    if (-not $drives) {
+        Write-Log "No optimizable drives found" "WARNING"
+        return
+    }
+
+    Write-Host "  Detected drives:" -ForegroundColor Cyan
+    $i = 1
+    $driveMap = @{}
+    foreach ($drive in $drives) {
+        $optType = if ($drive.MediaType -eq 'SSD') { "TRIM" } else { "Defrag" }
+        Write-Host "  [$i] $($drive.DriveLetter): - $($drive.FriendlyName) ($($drive.MediaType), $($drive.SizeGB) GB) - $optType"
+        $driveMap[$i] = $drive
+        $i++
+    }
+    Write-Host "  [A] Optimize all drives"
+    Write-Host "  [0] Cancel"
+    Write-Host ""
+
+    $choice = Read-Host "  Select drive to optimize"
+
+    if ($choice -eq "0") { Write-Log "Cancelled" "INFO"; return }
+
+    $selectedDrives = if ($choice -eq "A" -or $choice -eq "a") {
+        $drives
+    } else {
+        $driveMap[[int]$choice]
+        if (-not $driveMap[[int]$choice]) { Write-Host "Invalid selection" -ForegroundColor Red; return }
+        @($driveMap[[int]$choice])
+    }
+
+    foreach ($drive in $selectedDrives) {
+        Write-Host ""
+        Write-Log "Optimizing $($drive.DriveLetter): ($($drive.MediaType))..." "SECTION"
+
+        try {
+            if ($drive.MediaType -eq 'SSD' -or $drive.MediaType -eq 'NVMe') {
+                # For SSDs: Run TRIM/Retrim
+                Write-Host "  Running TRIM optimization for SSD..." -ForegroundColor Yellow
+                Optimize-Volume -DriveLetter $drive.DriveLetter -ReTrim -Verbose
+                Write-Log "TRIM completed for $($drive.DriveLetter):" "SUCCESS"
+            } else {
+                # For HDDs: Run defrag
+                Write-Host "  Running defragmentation for HDD..." -ForegroundColor Yellow
+                Write-Host "  This may take a while for large drives..." -ForegroundColor Gray
+                Optimize-Volume -DriveLetter $drive.DriveLetter -Defrag -Verbose
+                Write-Log "Defrag completed for $($drive.DriveLetter):" "SUCCESS"
+            }
+
+            # Show fragmentation analysis
+            $analysis = Optimize-Volume -DriveLetter $drive.DriveLetter -Analyze
+            Write-Host "  Fragmentation: $($analysis.FragmentationPercent)%" -ForegroundColor $(if($analysis.FragmentationPercent -gt 10){'Yellow'}else{'Green'})
+        } catch {
+            Write-Log "Failed to optimize $($drive.DriveLetter): $_" "ERROR"
+        }
+    }
+
+    Write-Host ""
+    Write-Log "Drive optimization completed" "SUCCESS"
+}
+
+function Start-TimeSyncRepair {
+    <#
+    .SYNOPSIS
+        Repair Windows Time service and resync with NTP servers
+    #>
+    Set-ConsoleSize
+    Clear-Host
+    Write-Log "TIME SYNCHRONIZATION REPAIR" "SECTION"
+
+    Write-Host ""
+    Write-Host "  Current time: $(Get-Date)" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  [1] Quick repair (restart service and sync)"
+    Write-Host "  [2] Full repair (reset service, reconfigure NTP)"
+    Write-Host "  [3] Change NTP server"
+    Write-Host "  [4] View current time configuration"
+    Write-Host "  [0] Cancel"
+    Write-Host ""
+
+    $choice = Read-Host "  Select option"
+
+    switch ($choice) {
+        "1" {
+            Write-Log "Performing quick time sync repair..."
+
+            # Restart time service
+            Write-Host "  Restarting Windows Time service..." -ForegroundColor Yellow
+            Restart-Service -Name w32time -Force -ErrorAction SilentlyContinue
+
+            # Force resync
+            Write-Host "  Forcing time synchronization..." -ForegroundColor Yellow
+            w32tm /resync /force | Out-Null
+
+            Start-Sleep -Seconds 2
+            Write-Log "Time sync completed" "SUCCESS"
+            Write-Host "  Current time: $(Get-Date)" -ForegroundColor Cyan
+        }
+
+        "2" {
+            Write-Log "Performing full time service repair..."
+
+            # Unregister and re-register time service
+            Write-Host "  Re-registering time service..." -ForegroundColor Yellow
+            w32tm /unregister | Out-Null
+            w32tm /register | Out-Null
+
+            # Configure NTP servers
+            Write-Host "  Configuring NTP servers..." -ForegroundColor Yellow
+            w32tm /config /syncfromflags:manual /manualpeerlist:"time.windows.com,0x1 pool.ntp.org,0x1" | Out-Null
+
+            # Set update interval
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient" -Name "SpecialPollInterval" -Value 3600 -Type DWord -Force
+
+            # Start service
+            Set-Service -Name w32time -StartupType Automatic
+            Start-Service -Name w32time
+
+            # Force sync
+            w32tm /resync /force | Out-Null
+
+            Write-Log "Full repair completed" "SUCCESS"
+            Write-Host "  Current time: $(Get-Date)" -ForegroundColor Cyan
+        }
+
+        "3" {
+            Write-Host ""
+            Write-Host "  Common NTP servers:" -ForegroundColor Cyan
+            Write-Host "  [1] Windows (time.windows.com)"
+            Write-Host "  [2] Google (time.google.com)"
+            Write-Host "  [3] Cloudflare (time.cloudflare.com)"
+            Write-Host "  [4] Pool (pool.ntp.org)"
+            Write-Host "  [5] Custom"
+            Write-Host ""
+
+            $ntpChoice = Read-Host "  Select NTP server"
+            $ntpServer = switch ($ntpChoice) {
+                "1" { "time.windows.com,0x1" }
+                "2" { "time.google.com,0x1" }
+                "3" { "time.cloudflare.com,0x1" }
+                "4" { "pool.ntp.org,0x1" }
+                "5" { Read-Host "  Enter custom NTP server" }
+                default { "time.windows.com,0x1" }
+            }
+
+            Write-Log "Setting NTP server to: $ntpServer"
+            w32tm /config /manualpeerlist:$ntpServer /syncfromflags:manual /update | Out-Null
+            w32tm /resync /force | Out-Null
+            Write-Log "NTP server updated" "SUCCESS"
+        }
+
+        "4" {
+            Write-Log "Current time configuration:" "SECTION"
+            w32tm /query /status
+            Write-Host ""
+            Write-Host "  Configuration:" -ForegroundColor Cyan
+            w32tm /query /configuration | Select-String "NtpServer|Type|Source"
+        }
+
+        "0" { Write-Log "Cancelled" "INFO" }
+        default { Write-Host "Invalid option" -ForegroundColor Red }
+    }
+}
+
+function Start-SearchIndexRebuild {
+    <#
+    .SYNOPSIS
+        Rebuild Windows Search index
+    #>
+    Set-ConsoleSize
+    Clear-Host
+    Write-Log "WINDOWS SEARCH INDEX REBUILD" "SECTION"
+
+    Write-Host ""
+    Write-Host "  This will reset the Windows Search index database." -ForegroundColor Yellow
+    Write-Host "  Search functionality will be unavailable during rebuild." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  [1] Quick reset (stop service, delete index, restart)"
+    Write-Host "  [2] Full reset with index location change (for SSD users)"
+    Write-Host "  [3] Disable Windows Search indexing"
+    Write-Host "  [4] Enable Windows Search indexing"
+    Write-Host "  [5] Check index status"
+    Write-Host "  [0] Cancel"
+    Write-Host ""
+
+    $choice = Read-Host "  Select option"
+
+    switch ($choice) {
+        "1" {
+            Write-Log "Performing quick index reset..."
+
+            # Stop Windows Search service
+            Write-Host "  Stopping Windows Search service..." -ForegroundColor Yellow
+            Stop-Service -Name WSearch -Force -ErrorAction SilentlyContinue
+
+            # Remove index files
+            Write-Host "  Removing old index files..." -ForegroundColor Yellow
+            $indexPaths = @(
+                "$env:ALLUSERSPROFILE\Microsoft\Search\Data\Applications\Windows\Windows.edb",
+                "$env:ALLUSERSPROFILE\Microsoft\Search\Data\Applications\Windows\*.log"
+            )
+            foreach ($path in $indexPaths) {
+                Remove-Item -Path $path -Force -ErrorAction SilentlyContinue
+            }
+
+            # Start service
+            Write-Host "  Restarting Windows Search service..." -ForegroundColor Yellow
+            Start-Service -Name WSearch -ErrorAction SilentlyContinue
+
+            Write-Log "Index reset completed. Rebuild will begin automatically." "SUCCESS"
+            Write-Host "  This may take several hours depending on file count." -ForegroundColor Cyan
+        }
+
+        "2" {
+            Write-Log "Full reset with index location configuration..."
+
+            # Ask for new location
+            Write-Host ""
+            Write-Host "  Current index location: $env:ALLUSERSPROFILE\Microsoft\Search\Data" -ForegroundColor Gray
+            Write-Host "  Recommended: Move to secondary HDD if Windows is on SSD" -ForegroundColor Cyan
+            Write-Host ""
+            $newPath = Read-Host "  Enter new index location (or press Enter to keep default)"
+
+            if ($newPath -and (Test-Path $newPath)) {
+                # Stop service
+                Stop-Service -Name WSearch -Force
+
+                # Update registry
+                Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Search" -Name "DataDirectory" -Value $newPath -Force
+
+                # Move existing files
+                $oldPath = "$env:ALLUSERSPROFILE\Microsoft\Search\Data"
+                if (Test-Path $oldPath) {
+                    Move-Item -Path $oldPath -Destination "$newPath\SearchData_Backup_$(Get-Date -Format 'yyyyMMdd')" -Force -ErrorAction SilentlyContinue
+                }
+
+                # Start service
+                Start-Service -Name WSearch
+                Write-Log "Index location changed and service restarted" "SUCCESS"
+            } else {
+                Write-Log "Invalid path or no change requested" "WARNING"
+            }
+        }
+
+        "3" {
+            Write-Log "Disabling Windows Search indexing..."
+            Stop-Service -Name WSearch -Force
+            Set-Service -Name WSearch -StartupType Disabled
+            Write-Log "Windows Search disabled" "SUCCESS"
+            Write-Host "  This will improve performance on low-end systems." -ForegroundColor Cyan
+        }
+
+        "4" {
+            Write-Log "Enabling Windows Search indexing..."
+            Set-Service -Name WSearch -StartupType Automatic
+            Start-Service -Name WSearch
+            Write-Log "Windows Search enabled" "SUCCESS"
+        }
+
+        "5" {
+            Write-Log "Windows Search Index Status:" "SECTION"
+            $service = Get-Service -Name WSearch -ErrorAction SilentlyContinue
+            Write-Host "  Service Status: $($service.Status)" -ForegroundColor $(if($service.Status -eq 'Running'){'Green'}else{'Red'})
+            Write-Host "  Startup Type: $($service.StartupType)" -ForegroundColor Gray
+
+            $indexPath = "$env:ALLUSERSPROFILE\Microsoft\Search\Data\Applications\Windows"
+            if (Test-Path $indexPath) {
+                $indexSize = (Get-ChildItem $indexPath -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+                $sizeMB = [math]::Round($indexSize / 1MB, 2)
+                Write-Host "  Index Size: $sizeMB MB" -ForegroundColor Gray
+            }
+
+            # Show indexed locations
+            Write-Host ""
+            Write-Host "  Indexed Locations:" -ForegroundColor Cyan
+            $indexedPaths = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Search\CrawlScopeManager\Windows\SystemIndex" -Name "DefaultRules" -ErrorAction SilentlyContinue
+            if ($indexedPaths) {
+                $indexedPaths.DefaultRules | ForEach-Object { Write-Host "    $_" -ForegroundColor Gray }
+            }
+        }
+
+        "0" { Write-Log "Cancelled" "INFO" }
+        default { Write-Host "Invalid option" -ForegroundColor Red }
+    }
+}
+
+function Start-StartupProgramManager {
+    <#
+    .SYNOPSIS
+        Manage startup programs - view, enable, disable, remove
+    #>
+    Set-ConsoleSize
+    Clear-Host
+    Write-Log "STARTUP PROGRAM MANAGER" "SECTION"
+
+    Write-Host ""
+    Write-Host "  Loading startup programs..." -ForegroundColor Gray
+
+    # Get startup items from multiple sources
+    $startupItems = @()
+
+    # Registry Run keys
+    $runKeys = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+    )
+
+    foreach ($key in $runKeys) {
+        if (Test-Path $key) {
+            Get-ItemProperty -Path $key | Get-Member -MemberType NoteProperty | Where-Object { $_.Name -notmatch '^PS' } | ForEach-Object {
+                $value = (Get-ItemProperty -Path $key -Name $_.Name).$($_.Name)
+                $startupItems += [PSCustomObject]@{
+                    Name = $_.Name
+                    Command = $value
+                    Location = if ($key -like "HKLM*") { "Machine" } else { "User" }
+                    Type = "Registry"
+                    KeyPath = $key
+                }
+            }
+        }
+    }
+
+    # Startup folders
+    $startupFolders = @(
+        "$env:ALLUSERSPROFILE\Microsoft\Windows\Start Menu\Programs\StartUp",
+        "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
+    )
+
+    foreach ($folder in $startupFolders) {
+        if (Test-Path $folder) {
+            Get-ChildItem -Path $folder -Filter "*.lnk" -ErrorAction SilentlyContinue | ForEach-Object {
+                $shell = New-Object -ComObject WScript.Shell
+                $shortcut = $shell.CreateShortcut($_.FullName)
+                $startupItems += [PSCustomObject]@{
+                    Name = $_.BaseName
+                    Command = $shortcut.TargetPath
+                    Location = if ($folder -like "*All Users*" -or $folder -like "*ProgramData*") { "Machine" } else { "User" }
+                    Type = "Shortcut"
+                    FilePath = $_.FullName
+                }
+            }
+        }
+    }
+
+    # Task Manager startup items (modern)
+    try {
+        Get-CimInstance Win32_StartupCommand -ErrorAction SilentlyContinue | ForEach-Object {
+            $startupItems += [PSCustomObject]@{
+                Name = $_.Name
+                Command = $_.Command
+                Location = $_.Location
+                Type = "TaskManager"
+                User = $_.User
+            }
+        } | Out-Null
+    } catch {
+        # Win32_StartupCommand may not be available on all systems
+    }
+
+    if ($startupItems.Count -eq 0) {
+        Write-Log "No startup programs found" "INFO"
+        return
+    }
+
+    Write-Host ""
+    Write-Host "  Found $($startupItems.Count) startup programs:" -ForegroundColor Cyan
+    Write-Host ""
+
+    $i = 1
+    $itemMap = @{}
+    foreach ($item in $startupItems) {
+        $locationColor = if ($item.Location -eq "Machine") { "Yellow" } else { "Cyan" }
+        Write-Host "  [$i] " -NoNewline
+        Write-Host "$($item.Name)" -ForegroundColor White -NoNewline
+        Write-Host " ($($item.Type), " -NoNewline -ForegroundColor Gray
+        Write-Host "$($item.Location)" -ForegroundColor $locationColor -NoNewline
+        Write-Host ")" -ForegroundColor Gray
+        Write-Host "      $($item.Command)" -ForegroundColor DarkGray
+        $itemMap[$i] = $item
+        $i++
+    }
+
+    Write-Host ""
+    Write-Host "  [D] Disable selected program"
+    Write-Host "  [R] Remove selected program"
+    Write-Host "  [A] Add new startup program"
+    Write-Host "  [0] Back"
+    Write-Host ""
+
+    $action = Read-Host "  Select action"
+
+    switch ($action) {
+        "D" {
+            $num = Read-Host "  Enter program number to disable"
+            $item = $itemMap[[int]$num]
+            if ($item) {
+                if ($item.Type -eq "Registry") {
+                    # Rename the value to disable (prefix with _)
+                    $currentValue = (Get-ItemProperty -Path $item.KeyPath -Name $item.Name).$($item.Name)
+                    Remove-ItemProperty -Path $item.KeyPath -Name $item.Name -Force
+                    New-ItemProperty -Path $item.KeyPath -Name "_$($item.Name)_Disabled" -Value $currentValue -PropertyType String -Force | Out-Null
+                    Write-Log "Disabled: $($item.Name)" "SUCCESS"
+                } elseif ($item.Type -eq "Shortcut") {
+                    Rename-Item -Path $item.FilePath -NewName "$($item.FilePath).disabled" -Force
+                    Write-Log "Disabled: $($item.Name)" "SUCCESS"
+                }
+            }
+        }
+
+        "R" {
+            $num = Read-Host "  Enter program number to remove"
+            $item = $itemMap[[int]$num]
+            if ($item) {
+                $confirm = Read-Host "  Confirm removal of '$($item.Name)'? (Y/N)"
+                if ($confirm -eq "Y") {
+                    if ($item.Type -eq "Registry") {
+                        Remove-ItemProperty -Path $item.KeyPath -Name $item.Name -Force
+                    } elseif ($item.Type -eq "Shortcut") {
+                        Remove-Item -Path $item.FilePath -Force
+                    }
+                    Write-Log "Removed: $($item.Name)" "SUCCESS"
+                }
+            }
+        }
+
+        "A" {
+            Write-Host ""
+            Write-Host "  Add new startup program:" -ForegroundColor Cyan
+            $progName = Read-Host "  Program name"
+            $progPath = Read-Host "  Program path (or command)"
+            $progScope = Read-Host "  Scope (M)achine or (U)ser"
+
+            if ($progScope -eq "M" -or $progScope -eq "m") {
+                $key = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+            } else {
+                $key = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+            }
+
+            New-ItemProperty -Path $key -Name $progName -Value $progPath -PropertyType String -Force | Out-Null
+            Write-Log "Added: $progName" "SUCCESS"
+        }
+
+        "0" { Write-Log "Cancelled" "INFO" }
+        default { Write-Host "Invalid option" -ForegroundColor Red }
+    }
+}
+
 # Export functions
 Export-ModuleMember -Function @(
     'Start-SystemMaintenance',
@@ -1174,5 +1649,9 @@ Export-ModuleMember -Function @(
     'Start-MemoryDiagnostic',
     'Get-DriveHealth',
     'Start-WindowsUpdateRepair',
-    'Start-DISMRepair'
+    'Start-DISMRepair',
+    'Start-DriveOptimization',
+    'Start-TimeSyncRepair',
+    'Start-SearchIndexRebuild',
+    'Start-StartupProgramManager'
 )
