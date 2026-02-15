@@ -2,31 +2,73 @@
 
 All notable changes to System Optimizer will be documented in this file.
 
-## [Unreleased]
+## [2.0.0] - 2026-02-15
 
-### Code Quality & Standards
-- **PowerShell Approved Verbs** - Fixed all unapproved verb usages:
-  - `Apply-WinUtilServiceConfig` → `Set-WinUtilServiceConfig`
-  - `Preview-WinUtilServiceChanges` → `Show-WinUtilServiceChanges`
-  - `Schedule-ShutdownAtTime` → `Set-ShutdownAtTime`
-  - `Schedule-RestartAtTime` → `Set-RestartAtTime`
-  - `Schedule-ShutdownTimer` → `Set-ShutdownTimer`
-  - `Schedule-RestartTimer` → `Set-RestartTimer`
-  - `Cancel-AllScheduledShutdowns` → `Stop-ScheduledShutdown`
-  - `Verify-OptimizationStatus` → `Test-OptimizationStatus`
-- **Automatic Variable Fixes** - Fixed `$profile` variable conflict with PowerShell automatic variable
-- **ShouldProcess Support** - Added proper `-WhatIf` support to `Set-OptimizationProfile`
-- **Security Hardening** - Added safeguards to all `Invoke-Expression` calls with validation and user confirmation
+### Major Release - Code Quality & Architecture Overhaul
 
-### Menu Architecture
-- **Consolidated Maintenance Menu** - Moved 5 maintenance items to sub-menu (reduced main menu from 38 to 34 items)
-- **Consolidated Network Menu** - Moved 2 network items to sub-menu
-- **Renumbered Menu Items** - Sequential numbering after consolidation
+This release represents a significant milestone in code quality, documentation, and architecture improvements.
 
-### Documentation
-- **Module Documentation** - Added comprehensive comment-based help to all 27 modules
-- **FunctionModuleMap** - Expanded with all 80+ exported functions for auto-reload support
-- **Repository Skills** - Created 5 Qoder skills for development standards
+### PowerShell Standards Compliance
+- **PSScriptAnalyzer Compliance** - Full audit and fix of all analyzer warnings
+  - Fixed 8 unapproved verb usages across Services, Utilities, and Shutdown modules
+  - Fixed automatic variable conflict (`$profile` → `$wifiProfile`)
+  - Added `[CmdletBinding(SupportsShouldProcess)]` to state-changing functions
+  - All functions now use Microsoft-approved PowerShell verbs
+
+### Security Enhancements
+- **Invoke-Expression Hardening** - Added comprehensive safeguards:
+  - User confirmation prompts before executing external scripts
+  - Download validation (empty script detection)
+  - Timeout protection for network requests
+  - User-Agent headers for traceability
+  - Affected functions: `Install-Chocolatey`, `Start-MAS`, Office Tool web installer
+
+### Menu Architecture Redesign
+- **Hierarchical Menu System** - Implemented sub-menu pattern for better organization:
+  - **Maintenance Tools** sub-menu consolidates 5 items: System Maintenance, Disk Cleanup, Reset Group Policy, Reset WMI, Repair Windows Updates
+  - **Network Tools** sub-menu consolidates 2 items: Network Optimizations, Reset Network
+  - Main menu reduced from 38 to 34 items for cleaner UI
+  - Sequential renumbering of all menu items
+  - Two-column layout maintained for compact display
+
+### Documentation Transformation
+- **Module Documentation** - Added comprehensive comment-based help to all 27 modules:
+  - Standardized SYNOPSIS, DESCRIPTION, and Exported Functions sections
+  - Menu structure documentation for modules with sub-menus
+  - Requirements and compatibility notes
+  - Version tracking (1.0.0)
+- **Repository Wiki** - Created extensive `.qoder/repowiki/` documentation:
+  - Core Architecture documentation
+  - Module Reference (40+ pages)
+  - User Interface Guide
+  - Troubleshooting and FAQ
+  - Advanced Topics and Configuration Management
+- **Repository Skills** - Created 5 Qoder skills for development standards:
+  - `powershell-approved-verbs` - Verb compliance guidelines
+  - `menu-architecture` - Menu system patterns
+  - `module-documentation` - Documentation standards
+  - `function-module-map` - Auto-reload maintenance
+  - `powershell-analyzer-fixes` - Common issue resolution
+
+### FunctionModuleMap Expansion
+- **Auto-Reload Support** - Expanded map to include all 80+ exported functions:
+  - Organized by category (Core, Telemetry, Services, Network, etc.)
+  - Enables dynamic module reloading when functions are missing
+  - Supports GitHub download fallback for missing modules
+
+### Files Modified
+- **All 27 modules** - Documentation headers added
+- **Start-SystemOptimizer.ps1** - Menu restructure, FunctionModuleMap expansion
+- **Documentation** - FEATURES.md, ROADMAP.md, STRUCTURE.md updated
+- **New Skills** - 5 skill files in `.qoder/skills/`
+
+### Statistics
+- 27 modules with standardized documentation
+- 80+ functions in FunctionModuleMap
+- 40+ wiki documentation pages
+- 5 development skills created
+- 8 unapproved verbs fixed
+- 4 Invoke-Expression calls hardened
 
 ## [1.0.0] - 2025-12-23
 
