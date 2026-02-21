@@ -1,0 +1,120 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Verify version in script
+        shell: pwsh
+        run: |
+          $scriptContent = Get-Content Start-SystemOptimizer.ps1 -Raw
+          if ($scriptContent -match 'Version\s*=\s*"([^"]+)"') {
+            $scriptVersion = $matches[1]
+            Write-Host "Script version: $scriptVersion"
+            Write-Host "Tag version: ${{ steps.version.outputs.VERSION }}"
+            if ($scriptVersion -ne "${{ steps.version.outputs.VERSION }}") {
+              Write-Warning "Version mismatch! Update Start-SystemOptimizer.ps1"
+            }
+          }
+
+      - name: Build EXE with ps2exe
+        shell: pwsh
+        run: |
+          Write-Host "Installing ps2exe..." -ForegroundColor Yellow
+          Install-Module ps2exe -Force -Scope CurrentUser
+          
+          Write-Host "Building SystemOptimizer.exe..." -ForegroundColor Yellow
+          
+          # Build ps2exe command with optional icon
+          $ps2exeParams = @{
+            inputFile = "Start-SystemOptimizer.ps1"
+            outputFile = "SystemOptimizer.exe"
+            noConsole = $false
+            noOutput = $false
+            noError = $false
+            requireAdmin = $true
+            title = "System Optimizer"
+            description = "Windows 10/11 Optimization Toolkit"
+            company = "coff33ninja"
+            product = "System Optimizer"
+            copyright = "2025-2026"
+            version = "${{ steps.version.outputs.VERSION }}"
+            verbose = $true
+          }
+          
+          # Add icon if it exists
+          if (Test-Path "icon.ico") {
+            $ps2exeParams['iconFile'] = "icon.ico"
+            Write-Host "Using icon.ico" -ForegroundColor Green
+          } else {
+            Write-Host "No icon.ico found, building without icon" -ForegroundColor Yellow
+          }
+          
+          Invoke-ps2exe @ps2exeParams
+          
+          if (Test-Path "SystemOptimizer.exe") {
+            $size = (Get-Item "SystemOptimizer.exe").Length / 1MB
+            Write-Host "Build successful! Size: $([math]::Round($size, 2)) MB" -ForegroundColor Green
+          } else {
+            Write-Error "Build failed!"
+            exit 1
+          }
+
+      - name: Extract changelog for this version
+        id: changelog
+        shell: pwsh
+        run: |
+          $changelogContent = Get-Content CHANGELOG.md -Raw
+          $version = "${{ steps.version.outputs.VERSION }}"
+          
+          # Extract section for this version
+          $pattern = "(?s)## \[$version\].*?(?=## \[|$)"
+          if ($changelogContent -match $pattern) {
+            $versionChangelog = $matches[0]
+            # Save to file for GitHub release
+            $versionChangelog | Out-File -FilePath changelog_excerpt.md -Encoding UTF8
+            Write-Host "Extracted changelog for version $version"
+          } else {
+            Write-Warning "Could not find changelog for version $version"
+            "No changelog found for this version." | Out-File -FilePath changelog_excerpt.md -Encoding UTF8
+          }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: System Optimizer ${{ steps.version.outputs.TAG }}
+          body_path: changelog_excerpt.md
+          files: |
+            SystemOptimizer.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SystemOptimizer-${{ steps.version.outputs.VERSION }}
+          path: SystemOptimizer.exe
+          retention-days: 90
