@@ -56,6 +56,7 @@ Power & System:    [17-22] Power Plan, ShutUp10, Updates, Drivers, Repair Update
 Advanced:          [23-26] Debloat Scripts, WinUtil Sync, UI Tweaks, Image Tool
 Tools:             [27-31] Logs, Backup, Shutdown, VHD Boot, Installer
 Management:        [32-34] Rollback, Hardware, Profiles
+Safety:            [W] View First-Run Warning Again
 ```
 
 ## Documentation
