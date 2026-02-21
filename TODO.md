@@ -9,6 +9,32 @@
 
 ### 🔄 In Progress
 
+#### Create Warning.psm1 Module (First-Run Safety)
+Create a first-run warning system to inform users about the tool:
+- [ ] Create modules/Warning.psm1 file
+- [ ] Create `Show-FirstRunWarning` function with comprehensive disclaimer
+- [ ] Explain what System Optimizer does (system modifications, service changes, etc.)
+- [ ] List potential risks and system changes
+- [ ] Require explicit user consent before proceeding
+- [ ] Store consent flag in registry or config file (HKCU:\Software\SystemOptimizer\FirstRun)
+- [ ] Add option to view warning again from menu
+- [ ] Include backup recommendation before running optimizations
+- [ ] Add "I understand and accept the risks" confirmation
+- [ ] Create restore point recommendation
+- [ ] Export `Show-FirstRunWarning`, `Test-FirstRunComplete`, `Set-FirstRunComplete`
+- [ ] Integrate into main script entry point (before menu loads)
+- [ ] Test warning display and consent flow
+- [ ] Add to FunctionModuleMap
+
+Warning Content Should Include:
+- Project purpose: Windows 10/11 optimization toolkit
+- What it modifies: Services, telemetry, registry, scheduled tasks, bloatware
+- Risks: System instability if not used correctly, potential compatibility issues
+- Recommendations: Create restore point, backup important data
+- Reversibility: Mention rollback system availability
+- Admin requirement: Explain why admin rights are needed
+- Support: Link to GitHub issues for problems
+
 #### Create Menu.psm1 Module
 Move all menu-related functions from main script to new Menu.psm1:
 - [ ] Create modules/Menu.psm1 file

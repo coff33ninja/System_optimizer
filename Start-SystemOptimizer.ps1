@@ -309,10 +309,10 @@ function Update-ModulesFromGitHub {
     try {
         New-Item -ItemType Directory -Path $TargetPath -Force | Out-Null
         
-        $moduleList = @('Backup','Bloatware','Core','Drivers','Hardware','ImageTool','Installer',
+        $moduleList = @('Backup','Bloatware','Core','Drivers','Hardware','Help','ImageTool','Installer',
                        'Logging','Maintenance','Network','OneDrive','Power','Privacy','Profiles',
                        'Registry','Rollback','Security','Services','Shutdown','Software','Tasks',
-                       'Telemetry','UITweaks','Utilities','VBS','VHDDeploy','WindowsUpdate')
+                       'Telemetry','UITweaks','Utilities','VBS','VHDDeploy','Warning','WindowsUpdate')
         
         Write-Host "[*] Downloading modules from GitHub (v$Version)..." -ForegroundColor Yellow
         $downloaded = 0
@@ -350,6 +350,12 @@ $script:FunctionModuleMap = @{
     'Run-AllOptimizations' = 'Core'
     'Run-FullSetup' = 'Core'
     'Start-Download' = 'Core'
+    
+    # Warning System
+    'Show-FirstRunWarning' = 'Warning'
+    'Test-FirstRunComplete' = 'Warning'
+    'Set-FirstRunComplete' = 'Warning'
+    'Reset-FirstRunWarning' = 'Warning'
     
     # Telemetry & Privacy
     'Disable-Telemetry' = 'Telemetry'
@@ -868,6 +874,31 @@ if (-not $SkipModuleLoad) {
         if ($continue -ne 'y' -and $continue -ne 'Y') {
             exit 1
         }
+    }
+}
+
+# First-run warning check (only in interactive mode)
+if (-not $RunOption) {
+    if (Get-Command 'Test-FirstRunComplete' -ErrorAction SilentlyContinue) {
+        if (-not (Test-FirstRunComplete)) {
+            Write-Log "First run detected - showing warning" "INFO"
+            
+            if (Get-Command 'Show-FirstRunWarning' -ErrorAction SilentlyContinue) {
+                $accepted = Show-FirstRunWarning
+                
+                if (-not $accepted) {
+                    Write-Log "User declined first-run warning" "WARNING"
+                    exit 0
+                }
+                
+                Write-Log "User accepted first-run warning" "INFO"
+            } else {
+                Write-Warning "Warning module loaded but Show-FirstRunWarning function not found"
+            }
+        }
+    } else {
+        # Warning module not loaded - continue without warning (graceful degradation)
+        Write-Log "Warning module not available - skipping first-run check" "WARNING"
     }
 }
 
