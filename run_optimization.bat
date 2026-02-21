@@ -3,7 +3,7 @@
 :: SYSTEM OPTIMIZER - LAUNCH METHODS
 :: ============================================================================
 :: This batch file provides multiple ways to launch System Optimizer
-:: Supports both the new modular version and legacy monolithic script
+:: Supports interactive menu, direct run options, and GitHub download
 :: ============================================================================
 
 title System Optimizer - Launcher
@@ -166,9 +166,9 @@ echo   SYSTEM OPTIMIZER - GOODBYE
 echo ==================================================================================
 echo.
 echo   Launch options:
-echo   - Modular (recommended): .\Start-SystemOptimizer.ps1
-echo   - Legacy: .\win11_ultimate_optimization.ps1
+echo   - Interactive menu: .\Start-SystemOptimizer.ps1
 echo   - With options: .\Start-SystemOptimizer.ps1 -RunOption all
+echo   - Show help: .\Start-SystemOptimizer.ps1 -Help
 echo.
 echo   Press any key to exit...
 pause >nul
