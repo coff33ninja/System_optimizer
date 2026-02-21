@@ -851,36 +851,36 @@ function Show-MainMenu {
     Write-Host ""
     
     Write-MenuItemCompact "7" "Disable VBS/Memory" 'Disable-VBS'
-    Write-MenuItemCompact "31" "View Logs" 'Show-LogViewer'
+    Write-MenuItemCompact "27" "View Logs" 'Show-LogViewer'
     Write-Host ""
     
     Write-MenuItemCompact "8" "Network Tools" 'Start-NetworkMenu'
-    Write-MenuItemCompact "32" "Profile Backup" 'Show-UserBackupMenu'
+    Write-MenuItemCompact "28" "Profile Backup" 'Show-UserBackupMenu'
     Write-Host ""
     
     Write-MenuItemCompact "9" "Remove OneDrive" 'Remove-OneDrive'
-    Write-MenuItemCompact "33" "Shutdown Options" 'Show-ShutdownMenu'
+    Write-MenuItemCompact "29" "Shutdown Options" 'Show-ShutdownMenu'
     Write-Host ""
     
     Write-MenuItemCompact "10" "Maintenance Tools" 'Start-MaintenanceMenu'
-    Write-MenuItemCompact "34" "VHD Native Boot" 'Start-VHDMenu'
+    Write-MenuItemCompact "30" "VHD Native Boot" 'Start-VHDMenu'
     Write-Host ""
     
     Write-Host "  Advanced Tools:               Management:" -ForegroundColor Gray
     Write-MenuItemCompact "17" "Power Plan" 'Set-PowerPlan'
-    Write-MenuItemCompact "35" "Windows Installer" 'Start-InstallerMenu'
+    Write-MenuItemCompact "31" "Windows Installer" 'Start-InstallerMenu'
     Write-Host ""
     
     Write-MenuItemCompact "18" "O&O ShutUp10" 'Start-OOShutUp10'
-    Write-MenuItemCompact "36" "Undo/Rollback" 'Show-RollbackMenu'
+    Write-MenuItemCompact "32" "Undo/Rollback" 'Show-RollbackMenu'
     Write-Host ""
     
     Write-MenuItemCompact "19" "Windows Update" 'Set-WindowsUpdateControl'
-    Write-MenuItemCompact "37" "Hardware Detection" 'Show-HardwareSummary'
+    Write-MenuItemCompact "33" "Hardware Detection" 'Show-HardwareSummary'
     Write-Host ""
     
     Write-MenuItemCompact "20" "Driver Management" 'Start-SnappyDriverInstaller'
-    Write-MenuItemCompact "38" "Optimization Profiles" 'Show-ProfileMenu'
+    Write-MenuItemCompact "34" "Optimization Profiles" 'Show-ProfileMenu'
     Write-Host ""
     
     Write-MenuItemCompact "21" "Repair Updates" 'Repair-WindowsUpdate'
@@ -945,14 +945,14 @@ function Start-MainMenu {
             "24" { Invoke-OptFunction 'Sync-WinUtilServices' }
             "25" { Invoke-OptFunction 'Start-DISMStyleTweaks' }      # UITweaks.psm1 - DISM++ style tweaks
             "26" { Invoke-OptFunction 'Start-ImageToolMenu' }        # ImageTool.psm1
-            "31" { Invoke-OptFunction 'Show-LogViewer' }
-            "32" { Invoke-OptFunction 'Show-UserBackupMenu' }        # Backup.psm1
-            "33" { Invoke-OptFunction 'Show-ShutdownMenu' }
-            "34" { Invoke-OptFunction 'Start-VHDMenu' }              # VHDDeploy.psm1
-            "35" { Invoke-OptFunction 'Start-InstallerMenu' }        # Installer.psm1
-            "36" { Invoke-OptFunction 'Show-RollbackMenu' }          # Rollback.psm1
-            "37" { Invoke-OptFunction 'Show-HardwareSummary' }       # Hardware.psm1
-            "38" { Invoke-OptFunction 'Show-ProfileMenu' }           # Profiles.psm1
+            "27" { Invoke-OptFunction 'Show-LogViewer' }
+            "28" { Invoke-OptFunction 'Show-UserBackupMenu' }        # Backup.psm1
+            "29" { Invoke-OptFunction 'Show-ShutdownMenu' }
+            "30" { Invoke-OptFunction 'Start-VHDMenu' }              # VHDDeploy.psm1
+            "31" { Invoke-OptFunction 'Start-InstallerMenu' }        # Installer.psm1
+            "32" { Invoke-OptFunction 'Show-RollbackMenu' }          # Rollback.psm1
+            "33" { Invoke-OptFunction 'Show-HardwareSummary' }       # Hardware.psm1
+            "34" { Invoke-OptFunction 'Show-ProfileMenu' }           # Profiles.psm1
             "U"  { Update-SystemOptimizer }
             "u"  { Update-SystemOptimizer }
             "?"  { 
