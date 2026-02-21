@@ -17,7 +17,7 @@ Create a first-run warning system to inform users about the tool:
 - [ ] List potential risks and system changes
 - [ ] Require explicit user consent before proceeding
 - [ ] Store consent flag in registry or config file (HKCU:\Software\SystemOptimizer\FirstRun)
-- [ ] Add option to view warning again from menu
+- [x] Add option to view warning again from menu
 - [ ] Include backup recommendation before running optimizations
 - [ ] Add "I understand and accept the risks" confirmation
 - [ ] Create restore point recommendation

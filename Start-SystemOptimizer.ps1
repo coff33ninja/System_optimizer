@@ -784,6 +784,7 @@ function Show-MainMenu {
     } else {
         Write-Host ""
     }
+    Write-Host "  [W] View First-Run Warning Again" -ForegroundColor DarkGray
     Write-Host "  [0] Exit"
     Write-Host ""
 }
@@ -828,6 +829,8 @@ function Start-MainMenu {
             "32" { Invoke-OptFunction 'Show-RollbackMenu' }          # Rollback.psm1
             "33" { Invoke-OptFunction 'Show-HardwareSummary' }       # Hardware.psm1
             "34" { Invoke-OptFunction 'Show-ProfileMenu' }           # Profiles.psm1
+            "W"  { Invoke-OptFunction 'Show-FirstRunWarning' }
+            "w"  { Invoke-OptFunction 'Show-FirstRunWarning' }
             "U"  { Update-SystemOptimizer }
             "u"  { Update-SystemOptimizer }
             "?"  { 
@@ -946,6 +949,7 @@ if ($RunOption) {
         'rollback' = 'Show-RollbackMenu'
         'hardware' = 'Show-HardwareSummary'
         'profiles' = 'Show-ProfileMenu'
+        'warning' = 'Show-FirstRunWarning'
         
         # Deployment Tools
         'vhd' = 'Start-VHDMenu'
@@ -968,7 +972,7 @@ if ($RunOption) {
         Write-Host "Core: $($optMap.Keys | Where-Object { $_ -in @('all','telemetry','services','bloatware','tasks','registry','vbs','network','onedrive','maintenance') } | Sort-Object)" -ForegroundColor Gray
         Write-Host "Software: $($optMap.Keys | Where-Object { $_ -in @('software','office','activation','drivers') } | Sort-Object)" -ForegroundColor Gray
         Write-Host "Advanced: $($optMap.Keys | Where-Object { $_ -like '*-*' -or $_ -in @('power','shutup10','cleanup','updates','defender','privacy') } | Sort-Object)" -ForegroundColor Gray
-        Write-Host "Utilities: $($optMap.Keys | Where-Object { $_ -in @('wifi','verify','logs','backup','shutdown','rollback','hardware','profiles') } | Sort-Object)" -ForegroundColor Gray
+        Write-Host "Utilities: $($optMap.Keys | Where-Object { $_ -in @('wifi','verify','logs','backup','shutdown','rollback','hardware','profiles','warning') } | Sort-Object)" -ForegroundColor Gray
         Write-Host "Deployment: $($optMap.Keys | Where-Object { $_ -in @('vhd','installer','image-tool') } | Sort-Object)" -ForegroundColor Gray
         Write-Host ""
         Write-Host "Use -Help for detailed information about all options" -ForegroundColor Cyan
