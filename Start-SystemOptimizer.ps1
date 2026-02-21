@@ -142,159 +142,28 @@ function Update-SystemOptimizer {
 # HELP
 # ============================================================================
 if ($Help) {
-    Write-Host @"
-
-SYSTEM OPTIMIZER v$($Config.Version)
-================================
-
-USAGE:
-  .\Start-SystemOptimizer.ps1 [OPTIONS]
-  .\SystemOptimizer.exe [OPTIONS]
-
-BASIC OPTIONS:
-  -Help              Show this comprehensive help message
-  -SkipModuleLoad    Start without loading modules (limited functionality)
-  -RunOption <opt>   Run specific optimization and exit (see options below)
-
-RUN OPTIONS (-RunOption):
-  Core Optimizations:
-    all                Run ALL optimizations (telemetry, services, bloatware, etc.)
-    telemetry          Disable telemetry, data collection, ads, feedback, Cortana
-    services           Disable unnecessary Windows services (interactive menu)
-    bloatware          Remove pre-installed apps (Xbox, Mail, Weather, etc.)
-    tasks              Disable scheduled maintenance tasks
-    registry           Apply registry performance tweaks and SSD optimizations
-    vbs                Disable VBS/Memory Integrity (improves gaming performance)
-    network            Optimize TCP/IP, DNS, and network adapter settings
-    onedrive           Completely remove OneDrive cloud storage
-    maintenance        Run system maintenance (DISM, SFC, temp cleanup)
-
-  Software & Tools:
-    software           Launch PatchMyPC for software installation/updates
-    office             Launch Office Tool Plus for Microsoft Office installation
-    activation         Run Microsoft Activation Script (MAS) for Windows/Office
-    drivers            Launch Snappy Driver Installer for driver management
+    # Try to load Help module if not already loaded
+    if (-not (Get-Command 'Show-ComprehensiveHelp' -ErrorAction SilentlyContinue)) {
+        $helpModulePath = Join-Path $Config.ModulesDir "Help.psm1"
+        if (Test-Path $helpModulePath) {
+            try {
+                Import-Module $helpModulePath -Force -Global -DisableNameChecking -ErrorAction Stop
+            } catch {
+                # Fallback to basic help if module fails to load
+                Write-Host "`nHelp module failed to load. Use -RunOption to see available options." -ForegroundColor Yellow
+                Write-Host "Or visit: https://github.com/coff33ninja/System_Optimizer" -ForegroundColor Cyan
+                exit 1
+            }
+        }
+    }
     
-  Advanced Operations:
-    power              Set power plan (High Performance, Ultimate, Balanced)
-    shutup10           Launch O&O ShutUp10 privacy tool
-    reset-gpo          Reset Group Policy to defaults
-    reset-wmi          Repair Windows Management Instrumentation
-    cleanup            Run advanced disk cleanup
-    updates            Control Windows Update settings
-    reset-network      Reset all network settings to defaults
-    repair-updates     Repair broken Windows Update components
-    defender           Manage Windows Defender settings
-    debloat-all        Remove ALL pre-installed apps (aggressive)
-    winutil-services   Apply ChrisTitusTech WinUtil service configurations
-    privacy            Advanced privacy tweaks and data collection controls
-    
-  Utilities:
-    wifi               Extract saved Wi-Fi passwords
-    verify             Check current optimization status
-    logs               View operation logs and history
-    backup             User profile backup/restore menu
-    shutdown           Shutdown/restart options menu
-    rollback           Undo previous optimizations
-    hardware           Hardware detection and analysis
-    profiles           Optimization profiles (Gaming, Developer, Office)
-    
-  Deployment Tools:
-    vhd                VHD Native Boot creation menu
-    installer          Windows deployment to blank drives
-    image-tool         Windows image modification and ISO creation
-
-EXAMPLES:
-  Interactive Menu:
-    .\Start-SystemOptimizer.ps1
-    .\SystemOptimizer.exe
-
-  Quick Optimizations:
-    .\Start-SystemOptimizer.ps1 -RunOption all
-    .\Start-SystemOptimizer.ps1 -RunOption telemetry
-    .\Start-SystemOptimizer.ps1 -RunOption bloatware
-
-  Specific Tools:
-    .\Start-SystemOptimizer.ps1 -RunOption software
-    .\Start-SystemOptimizer.ps1 -RunOption office
-    .\Start-SystemOptimizer.ps1 -RunOption activation
-
-  System Maintenance:
-    .\Start-SystemOptimizer.ps1 -RunOption maintenance
-    .\Start-SystemOptimizer.ps1 -RunOption cleanup
-    .\Start-SystemOptimizer.ps1 -RunOption repair-updates
-
-  Advanced Operations:
-    .\Start-SystemOptimizer.ps1 -RunOption debloat-all
-    .\Start-SystemOptimizer.ps1 -RunOption reset-network
-    .\Start-SystemOptimizer.ps1 -RunOption privacy
-
-MENU NAVIGATION:
-  When running interactively, use these menu numbers:
-  
-  Quick Actions:
-    [1]  Run ALL Optimizations    [16] Full Setup Workflow
-    
-  Core Optimizations:
-    [2]  Disable Telemetry        [3]  Disable Services
-    [4]  Remove Bloatware         [5]  Disable Scheduled Tasks
-    [6]  Registry Optimizations   [7]  Disable VBS/Memory Integrity
-    [8]  Network Tools            [9]  Remove OneDrive
-    [10] Maintenance Tools
-    
-  Software & Activation:
-    [11] Software Installation    [12] Office Tool Plus
-    [13] Microsoft Activation
-    
-  Advanced Tools:
-    [17] Power Plan              [18] O&O ShutUp10
-    [19] Windows Update Control  [20] Driver Management
-    [21] Repair Windows Update   [22] Defender Control
-    [23] Full Debloat           [24] WinUtil Service Sync
-    [25] Privacy Tweaks         [26] Windows Image Tool
-    
-  Deployment Tools:
-    [34] VHD Native Boot         [35] Windows Installer
-    
-  Utilities:
-    [14] Wi-Fi Passwords         [15] Verify Status
-    [31] View Logs              [32] Profile Backup/Restore
-    [33] Shutdown Options       [36] Undo/Rollback Center
-    [37] Hardware Detection     [38] Optimization Profiles
-
-FIRST TIME SETUP:
-  1. Ensure you're running as Administrator
-  2. Run: .\Start-SystemOptimizer.ps1 (starts interactive menu)
-  
-  OR use the standalone EXE:
-  1. Download SystemOptimizer.exe
-  2. Run as Administrator
-  3. All modules are embedded - no setup required
-
-REQUIREMENTS:
-  - Windows 10/11 (some features work on Windows 7/8.1)
-  - PowerShell 5.1+ (PowerShell 7+ recommended)
-  - Administrator privileges
-  - Internet connection (for downloads and updates)
-
-LOGGING:
-  All operations are logged to: C:\System_Optimizer\Logs\
-  Logs include timestamps, operation details, and error information
-  Old logs are automatically cleaned up after 30 days
-
-SAFETY FEATURES:
-  - Automatic system restore point creation (optional)
-  - Rollback system to undo changes
-  - Service backup before modifications
-  - Registry backup before tweaks
-  - Comprehensive logging for troubleshooting
-
-SUPPORT:
-  - GitHub: https://github.com/coff33ninja/System_optimizer
-  - Issues: Report bugs and feature requests on GitHub
-  - Documentation: README.md and wiki on GitHub repository
-
-"@
+    # Display comprehensive help from Help module
+    if (Get-Command 'Show-ComprehensiveHelp' -ErrorAction SilentlyContinue) {
+        Show-ComprehensiveHelp -Version $Config.Version
+    } else {
+        Write-Host "`nHelp system not available. Visit GitHub for documentation:" -ForegroundColor Yellow
+        Write-Host "https://github.com/coff33ninja/System_Optimizer" -ForegroundColor Cyan
+    }
     exit 0
 }
 
