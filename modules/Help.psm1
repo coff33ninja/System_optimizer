@@ -357,6 +357,7 @@ RUN OPTIONS (-RunOption):
     rollback           Undo previous optimizations
     hardware           Hardware detection and analysis
     profiles           Optimization profiles (Gaming, Developer, Office)
+    warning            Re-open the first-run safety warning and disclaimer
     
   Deployment Tools:
     vhd                VHD Native Boot creation menu
@@ -387,6 +388,7 @@ EXAMPLES:
     .\Start-SystemOptimizer.ps1 -RunOption debloat-all
     .\Start-SystemOptimizer.ps1 -RunOption reset-network
     .\Start-SystemOptimizer.ps1 -RunOption privacy
+    .\Start-SystemOptimizer.ps1 -RunOption warning
 
 MENU NAVIGATION:
   When running interactively, use these menu numbers:
