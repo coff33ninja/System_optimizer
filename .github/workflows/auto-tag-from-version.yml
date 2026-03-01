@@ -119,5 +119,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = "${{ steps.version.outputs.TAG }}"
-          gh workflow run release.yml --ref $tag
+          gh workflow run release.yml --ref main -f tag=$tag
           Write-Host "Triggered release workflow for $tag"
