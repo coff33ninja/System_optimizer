@@ -186,12 +186,14 @@ function Show-FirstRunWarning {
     # Consent prompt
     Write-Host "Do you understand and accept these risks?" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Type 'I ACCEPT' (case-sensitive) to continue, or anything else to exit: " -ForegroundColor Cyan -NoNewline
+    Write-Host "Type 'I ACCEPT' to continue (case-insensitive), or anything else to exit: " -ForegroundColor Cyan -NoNewline
     
     $response = Read-Host
     Write-Host ""
     
-    if ($response -ceq "I ACCEPT") {
+    $normalizedResponse = if ($null -ne $response) { $response.Trim() } else { "" }
+
+    if ($normalizedResponse -imatch '^I\s+ACCEPT$') {
         Write-Host "✓ Consent accepted. Proceeding with System Optimizer..." -ForegroundColor Green
         Write-Host ""
         
@@ -202,7 +204,11 @@ function Show-FirstRunWarning {
         }
         
         Write-Host "Press any key to continue..." -ForegroundColor Gray
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        try {
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        } catch {
+            Read-Host "Press Enter to continue" | Out-Null
+        }
         
         return $true
     } else {
@@ -211,6 +217,7 @@ function Show-FirstRunWarning {
         Write-Host "If you change your mind, run the script again." -ForegroundColor Gray
         Write-Host "For more information, visit: https://github.com/coff33ninja/System_Optimizer" -ForegroundColor Cyan
         Write-Host ""
+        Read-Host "Press Enter to exit" | Out-Null
         
         return $false
     }
