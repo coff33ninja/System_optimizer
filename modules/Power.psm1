@@ -28,7 +28,7 @@ Battery Settings:
 
 Requires Admin: Yes
 
-Version: 2.0.2
+Version: 2.0.3
 #>
 
 function Set-PowerPlan {

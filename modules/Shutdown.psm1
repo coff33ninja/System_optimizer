@@ -37,7 +37,7 @@ Features:
 
 Requires Admin: No (most functions)
 
-Version: 2.0.2
+Version: 2.0.3
 #>
 
 function Show-ShutdownMenu {

@@ -31,7 +31,7 @@ Tweak Categories:
 
 Requires Admin: Yes (some tweaks)
 
-Version: 2.0.2
+Version: 2.0.3
 #>
 
 # Helper function to safely write log messages (handles missing Write-Log)

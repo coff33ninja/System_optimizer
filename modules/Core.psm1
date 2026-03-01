@@ -28,7 +28,7 @@ Notes:
     - Supports both console and GUI progress displays
     - Thread-safe for use in parallel operations
 
-Version: 2.0.2
+Version: 2.0.3
 #>
 
 # ============================================================================

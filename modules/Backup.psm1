@@ -33,7 +33,7 @@ Backup Location:
 
 Requires Admin: No
 
-Version: 2.0.2
+Version: 2.0.3
 #>
 # ============================================================================
 
@@ -67,7 +67,7 @@ function Get-SystemOptimizerVersion {
             $null
         }
     }
-    $script:SystemOptimizerVersion = "2.0.2"
+    $script:SystemOptimizerVersion = "2.0.3"
     return $script:SystemOptimizerVersion
 }
 

@@ -2,6 +2,12 @@
 
 All notable changes to System Optimizer will be documented in this file.
 
+## [2.0.3] - 2026-03-01
+
+### Changes
+- Updated version to test self updating.
+- feat(update): add EXE in-place updater and startup module cache sync
+
 ## [2.0.2] - 2026-03-01
 
 ### Changes

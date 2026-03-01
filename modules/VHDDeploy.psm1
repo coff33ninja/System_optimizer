@@ -40,7 +40,7 @@ Work Directory:
 
 Requires Admin: Yes
 
-Version: 2.0.2
+Version: 2.0.3
 #>
 # ============================================================================
 # Creates a bootable VHD/VHDX file for dual/multi-boot Windows installations

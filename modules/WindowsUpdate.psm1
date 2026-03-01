@@ -31,7 +31,7 @@ Repair Operations:
 
 Requires Admin: Yes
 
-Version: 2.0.2
+Version: 2.0.3
 #>
 
 $script:VersionInfo = $null
@@ -62,8 +62,8 @@ function Get-SystemOptimizerVersionInfo {
     }
 
     return @{
-        Version = "2.0.2"
-        ReleaseTag = "v2.0.2"
+        Version = "2.0.3"
+        ReleaseTag = "v2.0.3"
     }
 }
 

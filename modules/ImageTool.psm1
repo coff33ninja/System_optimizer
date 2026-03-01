@@ -38,7 +38,7 @@ Work Directory:
 
 Requires Admin: Yes
 
-Version: 2.0.2
+Version: 2.0.3
 #>
 # Inspired by WinUtil MicroWin and NexTool Windows Install
 # ============================================================================
