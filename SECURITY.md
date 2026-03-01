@@ -1,21 +1,27 @@
 # Security Policy
 
-## Supported Versions
+## Supported PowerShell Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Security fixes are provided for the current release line (`2.x`) on the following runtimes:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| PowerShell Runtime           | Supported |
+| --------------------------- | --------- |
+| Windows PowerShell `5.1`    | Yes       |
+| PowerShell (Core) `7.2+`    | Yes       |
+| Older than `5.1`            | No        |
+
+Notes:
+- This project is Windows-focused and should be run on Windows.
+- Some features rely on Windows-specific modules/cmdlets and may behave differently across runtime editions.
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a security vulnerability:
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+1. Open a **private GitHub Security Advisory** for this repository.
+2. Include clear reproduction steps, impact, and affected files/modules.
+3. If advisory submission is unavailable, open a GitHub issue and mark it clearly as `SECURITY` (avoid posting exploit details publicly).
+
+Response targets:
+- Initial acknowledgement: within 72 hours.
+- Status updates: at least weekly until resolution.
