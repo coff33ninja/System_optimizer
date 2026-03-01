@@ -35,7 +35,7 @@ Log Location:
 Retention:
     30 days (configurable)
 
-Version: 2.0.1
+Version: 2.0.2
 #>
 
 # Global log settings

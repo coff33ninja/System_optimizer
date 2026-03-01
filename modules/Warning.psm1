@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     First-Run Warning and Consent System
 
@@ -9,7 +9,7 @@
     Stores consent in registry to avoid showing on subsequent runs.
 
 .NOTES
-    Version: 2.0.1
+    Version: 2.0.2
     Author: System Optimizer Team
     
 .EXPORTED FUNCTIONS

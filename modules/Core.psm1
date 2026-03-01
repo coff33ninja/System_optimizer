@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Core Module - System Optimizer
@@ -28,7 +28,7 @@ Notes:
     - Supports both console and GUI progress displays
     - Thread-safe for use in parallel operations
 
-Version: 2.0.1
+Version: 2.0.2
 #>
 
 # ============================================================================

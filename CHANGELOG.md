@@ -2,6 +2,20 @@
 
 All notable changes to System Optimizer will be documented in this file.
 
+## [2.0.2] - 2026-03-01
+
+### Changes
+- fix(warning): accept consent with trailing punctuation
+- fix(warning): accept consent input case-insensitively and harden prompt flow
+- ci(legacy): restore historical workflow filenames for code scanning references
+- ci(security): add dependency review workflow
+- ci(security): set explicit permissions for code-analysis workflow
+- ci(security): upgrade CodeQL action to v4
+- ci(security): add CodeQL workflow for GitHub Actions
+- fix(ci): pass explicit tag name to release action
+- fix(ci): support manual tag release dispatch
+- fix(ci): trigger release workflow after auto-tag
+
 ## [2.0.1] - 2026-03-01
 
 ### Security & Reliability Hardening

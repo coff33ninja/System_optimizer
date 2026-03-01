@@ -35,7 +35,7 @@ Configuration:
 
 Requires Admin: Yes
 
-Version: 2.0.1
+Version: 2.0.2
 #>
 
 function Invoke-TrustedDownload {
