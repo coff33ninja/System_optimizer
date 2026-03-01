@@ -24,8 +24,93 @@ Warning:
 
 Requires Admin: Yes
 
-Version: 1.0.0
+Version: 2.0.1
 #>
+
+$script:VersionInfo = $null
+
+function Get-SystemOptimizerVersionInfo {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $candidates = @(
+        (Join-Path $repoRoot "version.psd1"),
+        (Join-Path (Get-Location) "version.psd1"),
+        "C:\System_Optimizer\version.psd1"
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            $data = Import-PowerShellDataFile -Path $candidate
+            if ($data.Version) {
+                $version = [string]$data.Version
+                $releaseTag = "v$version"
+                return @{
+                    Version = $version
+                    ReleaseTag = $releaseTag
+                }
+            }
+        } catch {
+            $null
+        }
+    }
+
+    return @{
+        Version = "2.0.1"
+        ReleaseTag = "v2.0.1"
+    }
+}
+
+$script:VersionInfo = Get-SystemOptimizerVersionInfo
+$script:PinnedReleaseTag = $script:VersionInfo.ReleaseTag
+$script:TrustedToolHashes = @{
+    "Defender_Tools.exe"   = "30D04712A88624315C1C539A6176C3157B31806F0F25FB7E143FA066C5819591"
+    "install_wim_tweak.exe" = "AFBF22880D0129F8B11B1A5876F175C874F52C8572CB5C4BEDA3C528241A8E6C"
+}
+
+function Test-TrustedFileHash {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+        [Parameter(Mandatory)]
+        [string]$ExpectedHash
+    )
+
+    if (-not (Test-Path $Path)) { return $false }
+    $actual = (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToUpper()
+    return ($actual -eq $ExpectedHash.ToUpper())
+}
+
+function Get-TrustedToolFile {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FileName,
+        [Parameter(Mandatory)]
+        [string]$DestinationPath
+    )
+
+    $expectedHash = $script:TrustedToolHashes[$FileName]
+    if (-not $expectedHash) {
+        throw "No trusted hash configured for $FileName"
+    }
+
+    $moduleParent = Split-Path -Parent $PSScriptRoot
+    $bundledPath = Join-Path $moduleParent "tools\$FileName"
+    if (Test-Path $bundledPath) {
+        Copy-Item -Path $bundledPath -Destination $DestinationPath -Force
+        if (Test-TrustedFileHash -Path $DestinationPath -ExpectedHash $expectedHash) {
+            return $DestinationPath
+        }
+        throw "Bundled tool hash mismatch for $FileName"
+    }
+
+    $releaseUrl = "https://github.com/coff33ninja/System_optimizer/releases/download/$($script:PinnedReleaseTag)/$FileName"
+    Invoke-WebRequest -Uri $releaseUrl -OutFile $DestinationPath -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
+    if (Test-TrustedFileHash -Path $DestinationPath -ExpectedHash $expectedHash) {
+        return $DestinationPath
+    }
+    Remove-Item -Path $DestinationPath -Force -ErrorAction SilentlyContinue
+    throw "Downloaded tool hash mismatch for $FileName"
+}
 
 function Set-DefenderControl {
     $BaseDir = "C:\System_Optimizer\Defender"
@@ -155,11 +240,11 @@ function Set-DefenderControl {
             Start-Process "windowsdefender://threatsettings"
         }
         "6" {
-            Write-Log "Downloading Defender Tools GUI..."
+            Write-Log "Preparing Defender Tools GUI..."
             $exePath = "$BaseDir\Defender_Tools.exe"
             try {
-                Invoke-WebRequest -Uri "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/tools/Defender_Tools.exe" -OutFile $exePath -UseBasicParsing
-                Write-Log "Downloaded Defender_Tools.exe" "SUCCESS"
+                Get-TrustedToolFile -FileName "Defender_Tools.exe" -DestinationPath $exePath | Out-Null
+                Write-Log "Trusted Defender_Tools.exe ready (hash verified)" "SUCCESS"
                 Start-Process -FilePath $exePath
                 Write-Log "Defender Tools launched" "SUCCESS"
             } catch {
@@ -259,9 +344,9 @@ function Set-DefenderControl {
             if ($confirm -eq "REMOVE") {
                 Write-Log "Removing Windows Defender..."
                 try {
-                    # Download install_wim_tweak.exe
+                    # Stage trusted install_wim_tweak.exe
                     $tweakPath = "$BaseDir\install_wim_tweak.exe"
-                    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/tools/install_wim_tweak.exe" -OutFile $tweakPath -UseBasicParsing
+                    Get-TrustedToolFile -FileName "install_wim_tweak.exe" -DestinationPath $tweakPath | Out-Null
 
                     # Run the removal commands
                     Start-Process -FilePath $tweakPath -ArgumentList "/o /l" -Wait

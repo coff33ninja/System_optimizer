@@ -38,13 +38,13 @@ Work Directory:
 
 Requires Admin: Yes
 
-Version: 1.0.0
+Version: 2.0.1
 #>
 # Inspired by WinUtil MicroWin and NexTool Windows Install
 # ============================================================================
 
 
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Continue'
 
 # ============================================================================
 # LOGGING SETUP
@@ -93,7 +93,7 @@ if (Test-Path $ConfigFile) {
         if ($config.WorkDir -and (Test-Path (Split-Path $config.WorkDir -Parent))) {
             $script:WorkDir = $config.WorkDir
         }
-    } catch { }
+    } catch { $null }
 }
 
 $script:MountDir = "$WorkDir\Mount"
@@ -145,7 +145,7 @@ function Set-ConsoleSize {
             $windowSize.Height = $Height
             $Host.UI.RawUI.WindowSize = $windowSize
         }
-    } catch { }
+    } catch { $null }
 }
 
 function Initialize-WorkDirectories {
@@ -163,6 +163,85 @@ function Initialize-WorkDirectories {
         }
     }
     Write-ImageLog "Work directories ready at $WorkDir" "SUCCESS"
+}
+
+function Get-SystemOptimizerBootstrapCommand {
+    return '$file = Join-Path $env:TEMP ''SystemOptimizer.exe''; Invoke-WebRequest -Uri ''https://github.com/coff33ninja/System_optimizer/releases/latest/download/SystemOptimizer.exe'' -OutFile $file -UseBasicParsing -TimeoutSec 120; Start-Process -FilePath $file -Verb RunAs'
+}
+
+function Read-ImageToolDiskNumber {
+    param([string]$Prompt)
+
+    $value = Read-Host $Prompt
+    $diskNum = 0
+    if (-not [int]::TryParse($value, [ref]$diskNum) -or $diskNum -lt 0) {
+        Write-ImageLog "Invalid disk number: $value" "ERROR"
+        return $null
+    }
+
+    $disk = Get-Disk -Number $diskNum -ErrorAction SilentlyContinue
+    if (-not $disk) {
+        Write-ImageLog "Disk $diskNum not found" "ERROR"
+        return $null
+    }
+
+    return $diskNum
+}
+
+function Confirm-ImageToolAction {
+    param(
+        [Parameter(Mandatory)]
+        [string]$WarningText,
+        [Parameter(Mandatory)]
+        [string]$ConfirmationText
+    )
+
+    Write-Host ""
+    Write-Host "  WARNING: $WarningText" -ForegroundColor Red
+    Write-Host "  Type '$ConfirmationText' to continue." -ForegroundColor Yellow
+    $confirm = Read-Host "Confirmation"
+    if ($confirm -cne $ConfirmationText) {
+        Write-ImageLog "Operation cancelled by user" "WARNING"
+        return $false
+    }
+    return $true
+}
+
+function Invoke-ModuleMenuCommand {
+    param(
+        [Parameter(Mandatory)]
+        [string]$CommandName,
+        [Parameter(Mandatory)]
+        [string]$ModuleName
+    )
+
+    $command = Get-Command -Name $CommandName -ErrorAction SilentlyContinue
+    if ($command) {
+        & $CommandName
+        return $true
+    }
+
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $moduleCandidates = @(
+        (Join-Path $PSScriptRoot "$ModuleName.psm1"),
+        (Join-Path $repoRoot "modules\$ModuleName.psm1"),
+        (Join-Path "C:\System_Optimizer\modules" "$ModuleName.psm1")
+    ) | Select-Object -Unique
+
+    foreach ($modulePath in $moduleCandidates) {
+        if (-not (Test-Path $modulePath)) { continue }
+        try {
+            Import-Module $modulePath -Force -Global -DisableNameChecking -ErrorAction Stop
+            if (Get-Command -Name $CommandName -ErrorAction SilentlyContinue) {
+                & $CommandName
+                return $true
+            }
+        } catch {
+            Write-ImageLog "Failed to import $ModuleName from ${modulePath}: $($_.Exception.Message)" "WARNING"
+        }
+    }
+
+    return $false
 }
 
 function Update-WorkDirectoryPaths {
@@ -518,7 +597,7 @@ function Mount-WindowsWIM {
     }
 }
 
-function Apply-ImageTweaks {
+function Set-ImageTweaks {
     Set-ConsoleSize
     Clear-Host
     Write-ImageLog "APPLYING TWEAKS TO MOUNTED IMAGE" "SECTION"
@@ -552,23 +631,23 @@ function Apply-ImageTweaks {
 
     switch ($choice) {
         "1" {
-            Apply-BypassChecks
-            Apply-TelemetryTweaks
-            Apply-SponsoredAppsTweaks
-            Apply-LocalAccountTweaks
-            Apply-SkipAnimationTweaks
-            Apply-DarkThemeTweaks
-            Apply-TeamsDisable
-            Create-SystemOptimizerShortcut
+            Set-BypassChecks
+            Set-TelemetryTweaks
+            Set-SponsoredAppsTweaks
+            Set-LocalAccountTweaks
+            Set-SkipAnimationTweaks
+            Set-DarkThemeTweaks
+            Disable-TeamsAutoInstall
+            New-SystemOptimizerShortcut
         }
-        "2" { Apply-BypassChecks }
-        "3" { Apply-TelemetryTweaks }
-        "4" { Apply-SponsoredAppsTweaks }
-        "5" { Apply-LocalAccountTweaks }
-        "6" { Apply-SkipAnimationTweaks }
-        "7" { Apply-DarkThemeTweaks }
-        "8" { Apply-TeamsDisable }
-        "9" { Create-SystemOptimizerShortcut }
+        "2" { Set-BypassChecks }
+        "3" { Set-TelemetryTweaks }
+        "4" { Set-SponsoredAppsTweaks }
+        "5" { Set-LocalAccountTweaks }
+        "6" { Set-SkipAnimationTweaks }
+        "7" { Set-DarkThemeTweaks }
+        "8" { Disable-TeamsAutoInstall }
+        "9" { New-SystemOptimizerShortcut }
         "0" { }
     }
 
@@ -582,7 +661,7 @@ function Apply-ImageTweaks {
     Write-ImageLog "Tweaks applied" "SUCCESS"
 }
 
-function Apply-BypassChecks {
+function Set-BypassChecks {
     Write-ImageLog "Applying TPM/SecureBoot/RAM bypass..."
     reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassTPMCheck" /t REG_DWORD /d 1 /f >$null
     reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassSecureBootCheck" /t REG_DWORD /d 1 /f >$null
@@ -595,7 +674,7 @@ function Apply-BypassChecks {
     Write-ImageLog "Bypass checks applied" "SUCCESS"
 }
 
-function Apply-TelemetryTweaks {
+function Set-TelemetryTweaks {
     Write-ImageLog "Disabling telemetry in image..."
     reg add "HKLM\zSOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f >$null
     reg add "HKLM\zSOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f >$null
@@ -603,7 +682,7 @@ function Apply-TelemetryTweaks {
     Write-ImageLog "Telemetry disabled" "SUCCESS"
 }
 
-function Apply-SponsoredAppsTweaks {
+function Set-SponsoredAppsTweaks {
     Write-ImageLog "Disabling sponsored apps..."
     reg add "HKLM\zNTUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "OemPreInstalledAppsEnabled" /t REG_DWORD /d 0 /f >$null
     reg add "HKLM\zNTUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "PreInstalledAppsEnabled" /t REG_DWORD /d 0 /f >$null
@@ -613,7 +692,7 @@ function Apply-SponsoredAppsTweaks {
     Write-ImageLog "Sponsored apps disabled" "SUCCESS"
 }
 
-function Apply-LocalAccountTweaks {
+function Set-LocalAccountTweaks {
     Write-ImageLog "Enabling local account on OOBE..."
     reg add "HKLM\zSOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f >$null
     # Create bypass directory
@@ -621,7 +700,7 @@ function Apply-LocalAccountTweaks {
     Write-ImageLog "Local account enabled" "SUCCESS"
 }
 
-function Apply-SkipAnimationTweaks {
+function Set-SkipAnimationTweaks {
     Write-ImageLog "Skipping first logon animation..."
     reg add "HKLM\zSOFTWARE\Microsoft\Active Setup\Installed Components\CMP_NoFla" /f >$null
     reg add "HKLM\zSOFTWARE\Microsoft\Active Setup\Installed Components\CMP_NoFla" /ve /t REG_SZ /d "Stop First Logon Animation" /f >$null
@@ -629,14 +708,14 @@ function Apply-SkipAnimationTweaks {
     Write-ImageLog "First logon animation disabled" "SUCCESS"
 }
 
-function Apply-DarkThemeTweaks {
+function Set-DarkThemeTweaks {
     Write-ImageLog "Setting dark theme..."
     reg add "HKLM\zSOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "AppsUseLightTheme" /t REG_DWORD /d 0 /f >$null
     reg add "HKLM\zSOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "SystemUsesLightTheme" /t REG_DWORD /d 0 /f >$null
     Write-ImageLog "Dark theme set" "SUCCESS"
 }
 
-function Apply-TeamsDisable {
+function Disable-TeamsAutoInstall {
     Write-ImageLog "Disabling Teams auto-install..."
     reg add "HKLM\zSOFTWARE\Microsoft\Windows\CurrentVersion\Communications" /v "ConfigureChatAutoInstall" /t REG_DWORD /d 0 /f >$null
     reg add "HKLM\zSOFTWARE\Policies\Microsoft\Windows\Windows Chat" /v "ChatIcon" /t REG_DWORD /d 2 /f >$null
@@ -648,7 +727,7 @@ function Apply-TeamsDisable {
 # ============================================================================
 # DRIVER INJECTION
 # ============================================================================
-function Inject-Drivers {
+function Add-DriversToImage {
     Set-ConsoleSize
     Clear-Host
     Write-ImageLog "INJECT DRIVERS INTO IMAGE" "SECTION"
@@ -746,8 +825,8 @@ function Remove-ProvisionedPackages {
     $packages = Get-AppxProvisionedPackage -Path $ScratchDir
 
     foreach ($pattern in $packagesToRemove) {
-        $matches = $packages | Where-Object { $_.PackageName -like $pattern }
-        foreach ($pkg in $matches) {
+        $matchedPackages = $packages | Where-Object { $_.PackageName -like $pattern }
+        foreach ($pkg in $matchedPackages) {
             try {
                 Remove-AppxProvisionedPackage -Path $ScratchDir -PackageName $pkg.PackageName -ErrorAction SilentlyContinue
                 Write-ImageLog "Removed: $($pkg.DisplayName)" "SUCCESS"
@@ -808,14 +887,37 @@ function Remove-BloatFolders {
 # ============================================================================
 # UNATTENDED ANSWER FILE
 # ============================================================================
-function Create-UnattendFile {
+function New-UnattendFile {
     Write-ImageLog "CREATE UNATTENDED ANSWER FILE" "SECTION"
 
     Write-Host ""
     $userName = Read-Host "Enter default username (or press Enter for 'User')"
     if ([string]::IsNullOrEmpty($userName)) { $userName = "User" }
+    if ($userName -notmatch '^[A-Za-z0-9._-]{1,32}$') {
+        Write-ImageLog "Invalid username. Allowed: letters, numbers, dot, underscore, hyphen (max 32)." "ERROR"
+        return
+    }
 
-    $userPassword = Read-Host "Enter password (or press Enter for no password)"
+    $userPassword = Read-Host "Enter password (or press Enter for no password)" -AsSecureString
+    $userPasswordPlain = ""
+    if ($userPassword.Length -gt 0) {
+        Write-Host "Warning: unattend.xml stores passwords as plaintext." -ForegroundColor Yellow
+        $confirmPassword = Read-Host "Type 'PLAINTEXT' to include password"
+        if ($confirmPassword -eq "PLAINTEXT") {
+            $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($userPassword)
+            try {
+                $userPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+            } finally {
+                [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+            }
+        } else {
+            Write-ImageLog "Password omitted from unattend.xml by user choice" "WARNING"
+        }
+    }
+
+    $safeUserName = [System.Security.SecurityElement]::Escape($userName)
+    $safePassword = [System.Security.SecurityElement]::Escape($userPasswordPlain)
+    $bootstrapCmd = Get-SystemOptimizerBootstrapCommand
 
     $unattendContent = @"
 <?xml version="1.0" encoding="utf-8"?>
@@ -862,16 +964,16 @@ function Create-UnattendFile {
             <UserAccounts>
                 <LocalAccounts>
                     <LocalAccount wcm:action="add">
-                        <Name>$userName</Name>
+                        <Name>$safeUserName</Name>
                         <Group>Administrators</Group>
-                        <DisplayName>$userName</DisplayName>
+                        <DisplayName>$safeUserName</DisplayName>
 "@
 
-    if (-not [string]::IsNullOrEmpty($userPassword)) {
+    if (-not [string]::IsNullOrEmpty($safePassword)) {
         $unattendContent += @"
 
                         <Password>
-                            <Value>$userPassword</Value>
+                            <Value>$safePassword</Value>
                             <PlainText>true</PlainText>
                         </Password>
 "@
@@ -885,7 +987,7 @@ function Create-UnattendFile {
             <FirstLogonCommands>
                 <SynchronousCommand wcm:action="add">
                     <Order>1</Order>
-                    <CommandLine>powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile '$env:TEMP\SystemOptimizer.bat'; & '$env:TEMP\SystemOptimizer.bat'"</CommandLine>
+                    <CommandLine>powershell -ExecutionPolicy Bypass -Command "$bootstrapCmd"</CommandLine>
                     <Description>Run System Optimizer</Description>
                 </SynchronousCommand>
             </FirstLogonCommands>
@@ -914,7 +1016,7 @@ function Create-UnattendFile {
 # ============================================================================
 # CREATE DESKTOP SHORTCUT FOR SYSTEM OPTIMIZER
 # ============================================================================
-function Create-SystemOptimizerShortcut {
+function New-SystemOptimizerShortcut {
     Write-ImageLog "Creating System Optimizer desktop shortcut..."
 
     if (-not (Test-Path "$ScratchDir\Windows")) {
@@ -932,13 +1034,15 @@ function Create-SystemOptimizerShortcut {
     New-Item -ItemType Directory -Force -Path $defaultDesktop -ErrorAction SilentlyContinue | Out-Null
     New-Item -ItemType Directory -Force -Path $publicDesktop -ErrorAction SilentlyContinue | Out-Null
 
-    # Create a proper .lnk shortcut that downloads and runs the batch file
+    # Create a proper .lnk shortcut that downloads and runs the release EXE
     try {
+        $bootstrapCmd = Get-SystemOptimizerBootstrapCommand
+        $escapedBootstrap = $bootstrapCmd.Replace('"', '""')
         $vbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
 Set shortcut = WshShell.CreateShortcut("$defaultDesktop\System Optimizer.lnk")
 shortcut.TargetPath = "powershell.exe"
-shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
+shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""$escapedBootstrap"""
 shortcut.Description = "System Optimizer - Windows Optimization Toolkit"
 shortcut.WorkingDirectory = "%USERPROFILE%"
 shortcut.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
@@ -946,7 +1050,7 @@ shortcut.Save
 
 Set shortcut2 = WshShell.CreateShortcut("$publicDesktop\System Optimizer.lnk")
 shortcut2.TargetPath = "powershell.exe"
-shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
+shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""$escapedBootstrap"""
 shortcut2.Description = "System Optimizer - Windows Optimization Toolkit"
 shortcut2.WorkingDirectory = "%USERPROFILE%"
 shortcut2.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
@@ -985,7 +1089,7 @@ function Save-ModifiedImage {
 
     if ($saveChoice -eq "2") {
         Write-ImageLog "Running image cleanup (this may take a while)..."
-        $cleanupResult = dism /image:$ScratchDir /Cleanup-Image /StartComponentCleanup /ResetBase 2>&1
+        dism /image:$ScratchDir /Cleanup-Image /StartComponentCleanup /ResetBase 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-ImageLog "Cleanup failed - continuing with save..." "WARNING"
         } else {
@@ -1002,7 +1106,7 @@ function Save-ModifiedImage {
     Write-Host ""
     $createISO = Read-Host "Create ISO from modified image? (Y/N)"
     if ($createISO -eq "Y" -or $createISO -eq "y") {
-        Create-CustomISO
+        New-CustomISO
     }
 }
 
@@ -1210,7 +1314,7 @@ function Optimize-WIMImage {
     }
 }
 
-function Create-CustomISO {
+function New-CustomISO {
     Write-ImageLog "CREATE CUSTOM ISO" "SECTION"
 
     # Check for oscdimg
@@ -1219,7 +1323,7 @@ function Create-CustomISO {
         $oscdimgPath = Get-Command oscdimg.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
         if (-not $oscdimgPath) {
             Write-ImageLog "oscdimg.exe not found. Downloading..." "WARNING"
-            Download-Oscdimg
+            Get-Oscdimg
             $oscdimgPath = "$WorkDir\oscdimg.exe"
         }
     }
@@ -1266,7 +1370,7 @@ function Create-CustomISO {
 # ============================================================================
 # BOOTABLE USB CREATION
 # ============================================================================
-function Create-BootableUSB {
+function New-BootableUSB {
     Write-ImageLog "CREATE BOOTABLE USB" "SECTION"
 
     # List available USB drives
@@ -1285,11 +1389,16 @@ function Create-BootableUSB {
     }
     Write-Host ""
 
-    $diskNum = Read-Host "Enter disk number (WARNING: ALL DATA WILL BE ERASED)"
-    $confirm = Read-Host "Are you sure you want to format Disk $diskNum? (YES to confirm)"
+    $diskNum = Read-ImageToolDiskNumber "Enter disk number (WARNING: ALL DATA WILL BE ERASED)"
+    if ($null -eq $diskNum) { return }
 
-    if ($confirm -ne "YES") {
-        Write-ImageLog "USB creation cancelled" "WARNING"
+    $disk = Get-Disk -Number $diskNum -ErrorAction SilentlyContinue
+    if (-not $disk -or $disk.BusType -ne "USB") {
+        Write-ImageLog "Disk $diskNum is not a USB disk" "ERROR"
+        return
+    }
+
+    if (-not (Confirm-ImageToolAction -WarningText "Formatting USB disk $diskNum will erase all data." -ConfirmationText "ERASE USB DISK $diskNum")) {
         return
     }
 
@@ -1327,7 +1436,6 @@ function Create-BootableUSB {
     Write-ImageLog "Formatting USB drive..."
 
     # Format the USB drive
-    $disk = Get-Disk -Number $diskNum
     $disk | Clear-Disk -RemoveData -Confirm:$false
     $disk | Initialize-Disk -PartitionStyle GPT
 
@@ -1362,7 +1470,7 @@ function Create-BootableUSB {
 # ============================================================================
 # DOWNLOAD WINDOWS ISO
 # ============================================================================
-function Download-WindowsISO {
+function Get-WindowsISO {
     Write-ImageLog "DOWNLOAD WINDOWS ISO" "SECTION"
 
     Write-Host ""
@@ -1405,7 +1513,7 @@ function Download-WindowsISO {
 # ============================================================================
 # UTILITIES
 # ============================================================================
-function Download-Oscdimg {
+function Get-Oscdimg {
     Write-ImageLog "Downloading oscdimg.exe..."
 
     # Try to download from WinUtil releases or other source
@@ -1424,7 +1532,7 @@ function Download-Oscdimg {
     }
 }
 
-function Cleanup-WorkDirectories {
+function Clear-WorkDirectories {
     Write-ImageLog "CLEANUP WORK DIRECTORIES" "SECTION"
 
     Write-Host ""
@@ -1438,7 +1546,7 @@ function Cleanup-WorkDirectories {
         # Unmount any mounted images first
         try {
             Dismount-WindowsImage -Path $ScratchDir -Discard -ErrorAction SilentlyContinue
-        } catch { }
+        } catch { $null }
 
         # Unmount any mounted ISOs
         Get-DiskImage | Where-Object { $_.ImagePath -like "*.iso" } | Dismount-DiskImage -ErrorAction SilentlyContinue
@@ -1533,13 +1641,13 @@ function Start-QuickCustomISO {
     reg load HKLM\zDEFAULT "$ScratchDir\Windows\System32\config\default" 2>$null
     reg load HKLM\zNTUSER "$ScratchDir\Users\Default\ntuser.dat" 2>$null
 
-    Apply-BypassChecks
-    Apply-TelemetryTweaks
-    Apply-SponsoredAppsTweaks
-    Apply-LocalAccountTweaks
-    Apply-SkipAnimationTweaks
-    Apply-DarkThemeTweaks
-    Apply-TeamsDisable
+    Set-BypassChecks
+    Set-TelemetryTweaks
+    Set-SponsoredAppsTweaks
+    Set-LocalAccountTweaks
+    Set-SkipAnimationTweaks
+    Set-DarkThemeTweaks
+    Disable-TeamsAutoInstall
 
     # Unload registry
     reg unload HKLM\zSOFTWARE 2>$null
@@ -1557,6 +1665,7 @@ function Start-QuickCustomISO {
     Write-Host ""
     Write-Host "Step 7: Creating unattend file with System Optimizer auto-run..." -ForegroundColor Yellow
 
+    $bootstrapCmd = Get-SystemOptimizerBootstrapCommand
     $unattendContent = @"
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
@@ -1587,7 +1696,7 @@ function Start-QuickCustomISO {
             <FirstLogonCommands>
                 <SynchronousCommand wcm:action="add">
                     <Order>1</Order>
-                    <CommandLine>powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile '$env:TEMP\SystemOptimizer.bat'; & '$env:TEMP\SystemOptimizer.bat'"</CommandLine>
+                    <CommandLine>powershell -ExecutionPolicy Bypass -Command "$bootstrapCmd"</CommandLine>
                     <Description>Run System Optimizer</Description>
                 </SynchronousCommand>
             </FirstLogonCommands>
@@ -1603,7 +1712,7 @@ function Start-QuickCustomISO {
 
     # Step 7b: Create desktop shortcut for System Optimizer in Default User profile
     Write-Host "Creating System Optimizer shortcut on default desktop..." -ForegroundColor Yellow
-    Create-SystemOptimizerShortcut
+    New-SystemOptimizerShortcut
 
     # Step 8: Save and create ISO
     Write-Host ""
@@ -1613,7 +1722,7 @@ function Start-QuickCustomISO {
     Write-Host "  Tip: You can optimize WIM size later by mounting and running cleanup separately." -ForegroundColor Gray
     Dismount-WindowsImage -Path $ScratchDir -Save
 
-    Create-CustomISO
+    New-CustomISO
 
     Write-ImageLog "Custom Windows ISO creation complete!" "SUCCESS"
 }
@@ -1624,21 +1733,10 @@ function Start-QuickCustomISO {
 function Start-WindowsInstaller {
     Write-ImageLog "WINDOWS INSTALLER" "SECTION"
 
-    $installerUrl = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/configs/Windows-Installer.ps1"
-    $installerPath = "$WorkDir\Windows-Installer.ps1"
-
-    Write-ImageLog "Downloading Windows Installer..."
-    try {
-        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
-        Write-ImageLog "Downloaded Windows Installer" "SUCCESS"
-
-        Write-ImageLog "Launching Windows Installer..."
-        & $installerPath
-    } catch {
-        Write-ImageLog "Failed to download: $_" "ERROR"
-        Write-Host ""
-        Write-Host "You can manually download from:" -ForegroundColor Yellow
-        Write-Host "  $installerUrl" -ForegroundColor Cyan
+    Write-ImageLog "Launching Installer module menu..."
+    if (-not (Invoke-ModuleMenuCommand -CommandName "Start-InstallerMenu" -ModuleName "Installer")) {
+        Write-ImageLog "Installer module is not available locally" "ERROR"
+        Write-Host "Load modules from Start-SystemOptimizer.ps1 and try again." -ForegroundColor Yellow
     }
 }
 
@@ -1648,21 +1746,10 @@ function Start-WindowsInstaller {
 function Start-VHDDeployment {
     Write-ImageLog "VHD DEPLOYMENT TOOL" "SECTION"
 
-    $vhdUrl = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/configs/VHD-Deploy.ps1"
-    $vhdPath = "$WorkDir\VHD-Deploy.ps1"
-
-    Write-ImageLog "Downloading VHD Deployment Tool..."
-    try {
-        Invoke-WebRequest -Uri $vhdUrl -OutFile $vhdPath -UseBasicParsing
-        Write-ImageLog "Downloaded VHD Deployment Tool" "SUCCESS"
-
-        Write-ImageLog "Launching VHD Deployment Tool..."
-        & $vhdPath
-    } catch {
-        Write-ImageLog "Failed to download: $_" "ERROR"
-        Write-Host ""
-        Write-Host "You can manually download from:" -ForegroundColor Yellow
-        Write-Host "  $vhdUrl" -ForegroundColor Cyan
+    Write-ImageLog "Launching VHD deployment module menu..."
+    if (-not (Invoke-ModuleMenuCommand -CommandName "Start-VHDMenu" -ModuleName "VHDDeploy")) {
+        Write-ImageLog "VHDDeploy module is not available locally" "ERROR"
+        Write-Host "Load modules from Start-SystemOptimizer.ps1 and try again." -ForegroundColor Yellow
     }
 }
 
@@ -1690,13 +1777,13 @@ function Start-ImageToolMenu {
                     }
                 }
             }
-            "3" { Apply-ImageTweaks }
-            "4" { Inject-Drivers }
+            "3" { Set-ImageTweaks }
+            "4" { Add-DriversToImage }
             "5" { Remove-ImageBloatware }
-            "6" { Create-UnattendFile }
+            "6" { New-UnattendFile }
             "7" { Save-ModifiedImage }
-            "8" { Create-BootableUSB }
-            "9" { Download-WindowsISO }
+            "8" { New-BootableUSB }
+            "9" { Get-WindowsISO }
             "10" {
                 Write-ImageLog "Applying TPM/SecureBoot bypass to current system..."
                 reg add "HKLM\SYSTEM\Setup\LabConfig" /v "BypassTPMCheck" /t REG_DWORD /d 1 /f
@@ -1708,8 +1795,8 @@ function Start-ImageToolMenu {
             "11" { Start-WindowsInstaller }
             "12" { Start-VHDDeployment }
             "13" { Optimize-WIMImage }
-            "14" { Download-Oscdimg }
-            "15" { Cleanup-WorkDirectories }
+            "14" { Get-Oscdimg }
+            "15" { Clear-WorkDirectories }
             "16" { Show-MountedImages }
             "17" { Show-SettingsMenu }
             "0" { return }
@@ -1723,6 +1810,24 @@ function Start-ImageToolMenu {
         }
     } while ($true)
 }
+
+# Backward-compatible aliases for legacy function names
+Set-Alias -Name Apply-ImageTweaks -Value Set-ImageTweaks -Scope Script
+Set-Alias -Name Apply-BypassChecks -Value Set-BypassChecks -Scope Script
+Set-Alias -Name Apply-TelemetryTweaks -Value Set-TelemetryTweaks -Scope Script
+Set-Alias -Name Apply-SponsoredAppsTweaks -Value Set-SponsoredAppsTweaks -Scope Script
+Set-Alias -Name Apply-LocalAccountTweaks -Value Set-LocalAccountTweaks -Scope Script
+Set-Alias -Name Apply-SkipAnimationTweaks -Value Set-SkipAnimationTweaks -Scope Script
+Set-Alias -Name Apply-DarkThemeTweaks -Value Set-DarkThemeTweaks -Scope Script
+Set-Alias -Name Apply-TeamsDisable -Value Disable-TeamsAutoInstall -Scope Script
+Set-Alias -Name Inject-Drivers -Value Add-DriversToImage -Scope Script
+Set-Alias -Name Create-UnattendFile -Value New-UnattendFile -Scope Script
+Set-Alias -Name Create-SystemOptimizerShortcut -Value New-SystemOptimizerShortcut -Scope Script
+Set-Alias -Name Create-CustomISO -Value New-CustomISO -Scope Script
+Set-Alias -Name Create-BootableUSB -Value New-BootableUSB -Scope Script
+Set-Alias -Name Download-WindowsISO -Value Get-WindowsISO -Scope Script
+Set-Alias -Name Download-Oscdimg -Value Get-Oscdimg -Scope Script
+Set-Alias -Name Cleanup-WorkDirectories -Value Clear-WorkDirectories -Scope Script
 
 # ============================================================================
 # MODULE EXPORTS
@@ -1740,6 +1845,34 @@ Export-ModuleMember -Function @(
     'Copy-ISOContents',
     'Get-WindowsImageIndex',
     'Mount-WindowsWIM',
+    'Set-ImageTweaks',
+    'Set-BypassChecks',
+    'Set-TelemetryTweaks',
+    'Set-SponsoredAppsTweaks',
+    'Set-LocalAccountTweaks',
+    'Set-SkipAnimationTweaks',
+    'Set-DarkThemeTweaks',
+    'Disable-TeamsAutoInstall',
+    'Add-DriversToImage',
+    'Remove-ImageBloatware',
+    'Remove-ProvisionedPackages',
+    'Remove-WindowsFeatures',
+    'Remove-BloatFolders',
+    'New-UnattendFile',
+    'New-SystemOptimizerShortcut',
+    'Save-ModifiedImage',
+    'Optimize-WIMImage',
+    'New-CustomISO',
+    'New-BootableUSB',
+    'Get-WindowsISO',
+    'Get-Oscdimg',
+    'Clear-WorkDirectories',
+    'Show-MountedImages',
+    'Start-QuickCustomISO',
+    'Start-WindowsInstaller',
+    'Start-VHDDeployment',
+    'Start-ImageToolMenu'
+) -Alias @(
     'Apply-ImageTweaks',
     'Apply-BypassChecks',
     'Apply-TelemetryTweaks',
@@ -1749,22 +1882,13 @@ Export-ModuleMember -Function @(
     'Apply-DarkThemeTweaks',
     'Apply-TeamsDisable',
     'Inject-Drivers',
-    'Remove-ImageBloatware',
-    'Remove-ProvisionedPackages',
-    'Remove-WindowsFeatures',
-    'Remove-BloatFolders',
     'Create-UnattendFile',
     'Create-SystemOptimizerShortcut',
-    'Save-ModifiedImage',
-    'Optimize-WIMImage',
     'Create-CustomISO',
     'Create-BootableUSB',
     'Download-WindowsISO',
     'Download-Oscdimg',
-    'Cleanup-WorkDirectories',
-    'Show-MountedImages',
-    'Start-QuickCustomISO',
-    'Start-WindowsInstaller',
-    'Start-VHDDeployment',
-    'Start-ImageToolMenu'
+    'Cleanup-WorkDirectories'
 )
+
+

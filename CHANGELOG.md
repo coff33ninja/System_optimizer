@@ -2,6 +2,45 @@
 
 All notable changes to System Optimizer will be documented in this file.
 
+## [2.0.1] - 2026-03-01
+
+### Security & Reliability Hardening
+
+- Hardened high-risk download/execute flows across installer and deployment paths:
+  - Replaced direct raw config/script pulls in `Privacy.psm1` with trusted helper (`Get-TrustedConfigFile`) pinned to release tag.
+  - Pinned `Help.psm1` `FEATURES.md` fallback to tagged source and added strict HTTPS/host validation.
+  - Replaced ImageTool remote launcher scripts with local module dispatch (`Start-InstallerMenu`, `Start-VHDMenu`) to remove script-download execution.
+- Added explicit destructive-operation confirmations and stronger input validation:
+  - Installer: disk operations now require typed confirmation phrases.
+  - VHD deploy: overwrite and BCD entry actions now require explicit confirmation.
+  - ImageTool bootable USB flow now validates disk input and enforces USB-only targeting.
+- Strengthened trusted artifact handling:
+  - Installer `WinNTSetup.zip` now uses pinned release + SHA256 validation.
+  - Driver/Security/WindowsUpdate external binaries continue under hash-verified trusted retrieval.
+- Reduced hidden failures:
+  - Switched module-wide `ErrorActionPreference` from `SilentlyContinue` to `Continue` in Installer, ImageTool, and VHDDeploy.
+
+### Version Alignment
+
+- Updated runtime version to `2.0.1` in `Start-SystemOptimizer.ps1`.
+- Aligned help and backup metadata version strings to `2.0.1`.
+
+### Version Source Of Truth Automation
+
+- Established `version.psd1` as the single canonical version source with one key:
+  - `Version = '2.0.1'`
+- Updated runtime/version helpers to derive release tags from `Version` (`vX.Y.Z`) instead of storing a separate tag field.
+- Removed remaining hardcoded release tag/version fallbacks in runtime pull paths and helper logic.
+- Added dedicated module-header stamping script:
+  - `scripts/stamp-version.ps1`
+  - Stamps `Version:` headers in all module files from the canonical version.
+- Hardened release pipeline version validation (`.github/workflows/release.yml`):
+  - Parses version from pushed tag (`vX.Y.Z`).
+  - Runs version sync + header stamp scripts.
+  - Loads `version.psd1` and fails if loaded version does not equal tag version.
+  - Verifies `CHANGELOG.md` contains `## [X.Y.Z]`.
+  - Fails workflow on any version drift/mismatch.
+
 ## [2.0.0] - 2026-02-21
 
 ### Major Release - Code Quality & Architecture Overhaul

@@ -35,8 +35,87 @@ Configuration:
 
 Requires Admin: Yes
 
-Version: 1.0.0
+Version: 2.0.1
 #>
+
+function Invoke-TrustedDownload {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Url,
+        [Parameter(Mandatory)]
+        [string]$OutFile,
+        [int]$TimeoutSec = 120
+    )
+
+    $uri = [Uri]$Url
+    if ($uri.Scheme -ne "https") {
+        throw "Only HTTPS downloads are allowed: $Url"
+    }
+
+    $allowedHosts = @(
+        "raw.githubusercontent.com",
+        "github.com",
+        "api.github.com",
+        "community.chocolatey.org",
+        "patchmypc.com"
+    )
+    if ($uri.Host -notin $allowedHosts) {
+        throw "Download host is not allowlisted: $($uri.Host)"
+    }
+
+    $outDir = Split-Path -Parent $OutFile
+    if ($outDir -and -not (Test-Path $outDir)) {
+        New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+    }
+
+    Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -TimeoutSec $TimeoutSec -ErrorAction Stop
+    if (-not (Test-Path $OutFile)) {
+        throw "Download did not produce expected file: $OutFile"
+    }
+}
+
+function Install-ChocolateyBootstrap {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
+    if (Get-Command choco -ErrorAction SilentlyContinue) {
+        return $true
+    }
+
+    if (-not $PSCmdlet.ShouldProcess("Chocolatey from https://community.chocolatey.org/install.ps1", "Download and execute installer file")) {
+        return $false
+    }
+
+    Write-Host "Type 'INSTALL CHOCO' to confirm bootstrap execution." -ForegroundColor Yellow
+    $confirm = Read-Host "Confirmation"
+    if ($confirm -ne "INSTALL CHOCO") {
+        Write-Log "Chocolatey bootstrap cancelled by user" "WARNING"
+        return $false
+    }
+
+    $bootstrapPath = Join-Path $env:TEMP "choco-install.ps1"
+    try {
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        Invoke-TrustedDownload -Url "https://community.chocolatey.org/install.ps1" -OutFile $bootstrapPath -TimeoutSec 120
+
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $bootstrapPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey installer exited with code $LASTEXITCODE"
+        }
+
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+                    [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+        return [bool](Get-Command choco -ErrorAction SilentlyContinue)
+    } catch {
+        Write-Log "Chocolatey bootstrap failed: $($_.Exception.Message)" "ERROR"
+        return $false
+    } finally {
+        Remove-Item -Path $bootstrapPath -Force -ErrorAction SilentlyContinue
+    }
+}
 
 function Start-PatchMyPC {
     $BaseDir = "C:\System_Optimizer\Updater"
@@ -519,24 +598,11 @@ function Install-Chocolatey {
     }
 
     Write-Host "Installing Chocolatey..." -ForegroundColor Yellow
-    try {
-        Set-ExecutionPolicy Bypass -Scope Process -Force
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        
-        # Download with timeout and validation
-        $webClient = New-Object System.Net.WebClient
-        $webClient.Headers.Add("User-Agent", "SystemOptimizer")
-        $installScript = $webClient.DownloadString('https://community.chocolatey.org/install.ps1')
-        
-        if ([string]::IsNullOrWhiteSpace($installScript)) {
-            throw "Downloaded script is empty"
-        }
-        
-        Invoke-Expression $installScript | Out-Null
+    if (Install-ChocolateyBootstrap) {
         Write-Log "Chocolatey installed successfully" "SUCCESS"
         Write-Host "Please restart PowerShell to use choco commands." -ForegroundColor Yellow
-    } catch {
-        Write-Log "Failed to install Chocolatey: $_" "ERROR"
+    } else {
+        Write-Log "Failed to install Chocolatey" "ERROR"
         Write-Host "You can manually install from: https://chocolatey.org/install" -ForegroundColor Gray
     }
 }
@@ -601,17 +667,11 @@ function Install-RustDesk {
         # Install choco if not present
         if (-not $chocoPath) {
             Write-Log "Chocolatey not found, installing..."
-            try {
-                Set-ExecutionPolicy Bypass -Scope Process -Force
-                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-                Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')) | Out-Null
-
-                # Refresh PATH
-                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            if (Install-ChocolateyBootstrap) {
                 Write-Log "Chocolatey installed" "SUCCESS"
                 $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
-            } catch {
-                Write-Log "Failed to install Chocolatey: $_" "ERROR"
+            } else {
+                Write-Log "Failed to install Chocolatey" "ERROR"
             }
         }
 
@@ -682,17 +742,11 @@ function Install-AnyDesk {
         # Install choco if not present
         if (-not $chocoPath) {
             Write-Log "Chocolatey not found, installing..."
-            try {
-                Set-ExecutionPolicy Bypass -Scope Process -Force
-                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-                Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')) | Out-Null
-
-                # Refresh PATH
-                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            if (Install-ChocolateyBootstrap) {
                 Write-Log "Chocolatey installed" "SUCCESS"
                 $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
-            } catch {
-                Write-Log "Failed to install Chocolatey: $_" "ERROR"
+            } else {
+                Write-Log "Failed to install Chocolatey" "ERROR"
             }
         }
 
@@ -913,25 +967,8 @@ function Start-OfficeTool {
         Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
 
     } catch {
-        Write-Log "Error: $_" "ERROR"
-        Write-Log "Trying web installer fallback..." "WARNING"
-        try {
-            Write-Host "WARNING: About to download and execute from https://officetool.plus" -ForegroundColor Yellow
-            $confirm = Read-Host "Continue? (y/N)"
-            if ($confirm -eq 'y' -or $confirm -eq 'Y') {
-                $otpScript = Invoke-RestMethod -Uri "https://officetool.plus" -TimeoutSec 30
-                if ([string]::IsNullOrWhiteSpace($otpScript)) {
-                    throw "Downloaded script is empty"
-                }
-                Invoke-Expression $otpScript | Out-Null
-                Write-Log "Office Tool Plus launched via web installer" "SUCCESS"
-            } else {
-                Write-Host "Web installer cancelled." -ForegroundColor Yellow
-            }
-        } catch {
-            Write-Log "Web installer also failed: $_" "ERROR"
-            Write-Host "Manual download: https://otp.landian.vip/" -ForegroundColor Cyan
-        }
+        Write-Log "Error launching Office Tool Plus: $($_.Exception.Message)" "ERROR"
+        Write-Host "Manual download: https://otp.landian.vip/" -ForegroundColor Cyan
     }
 }
 
@@ -942,42 +979,37 @@ function Start-MAS {
     Write-Log "LAUNCHING MICROSOFT ACTIVATION SCRIPT" "SECTION"
 
     Write-Host ""
-    Write-Host "WARNING: This will download and execute code from https://get.activated.win" -ForegroundColor Red
-    Write-Host "This is the Microsoft Activation Script (MAS) used for Windows/Office activation." -ForegroundColor Yellow
-    Write-Host "A new window will open with activation options." -ForegroundColor Yellow
+    Write-Host "WARNING: This will download MAS from official GitHub and execute a local .cmd file." -ForegroundColor Red
+    Write-Host "Review source: https://github.com/massgravel/Microsoft-Activation-Scripts" -ForegroundColor Yellow
     Write-Host ""
-    
-    if (-not $PSCmdlet.ShouldProcess("MAS from https://get.activated.win", "Download and execute")) {
+
+    if (-not $PSCmdlet.ShouldProcess("MAS from official GitHub", "Download and execute local script file")) {
         Write-Host "Operation cancelled." -ForegroundColor Yellow
         return
     }
 
+    Write-Host "Type 'RUN MAS' to confirm execution." -ForegroundColor Yellow
+    $confirm = Read-Host "Confirmation"
+    if ($confirm -ne "RUN MAS") {
+        Write-Log "MAS launch cancelled by user" "WARNING"
+        return
+    }
+
+    $masUrl = "https://raw.githubusercontent.com/massgravel/Microsoft-Activation-Scripts/master/MAS/All-In-One-Version-KL/MAS_AIO.cmd"
+    $masPath = Join-Path $env:TEMP "MAS_AIO.cmd"
+
     try {
-        # Updated MAS link as of 2025
-        Write-Log "Downloading and running MAS from get.activated.win..."
-        $masScript = Invoke-RestMethod -Uri "https://get.activated.win" -TimeoutSec 30
-        
-        if ([string]::IsNullOrWhiteSpace($masScript)) {
-            throw "Downloaded script is empty"
-        }
-        
-        Invoke-Expression $masScript | Out-Null
+        Write-Log "Downloading MAS script from official GitHub..."
+        Invoke-TrustedDownload -Url $masUrl -OutFile $masPath -TimeoutSec 60
+        Write-Log "Launching MAS script..." "SUCCESS"
+        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$masPath`"" -Wait
         Write-Log "MAS launched successfully" "SUCCESS"
     } catch {
-        Write-Log "Primary method failed, trying alternative..." "WARNING"
-        try {
-            # Alternative method with DoH
-            $masScript = curl.exe -s --doh-url https://1.1.1.1/dns-query https://get.activated.win
-            if ([string]::IsNullOrWhiteSpace($masScript)) {
-                throw "Downloaded script is empty"
-            }
-            Invoke-Expression $masScript | Out-Null
-            Write-Log "MAS launched via alternative method" "SUCCESS"
-        } catch {
-            Write-Log "Failed to launch MAS: $_" "ERROR"
-            Write-Host "Manual method: Open PowerShell and run:" -ForegroundColor Yellow
-            Write-Host "irm https://get.activated.win | iex" -ForegroundColor Cyan
-        }
+        Write-Log "Failed to launch MAS: $($_.Exception.Message)" "ERROR"
+        Write-Host "Manual method: open the official project and run MAS_AIO.cmd locally." -ForegroundColor Yellow
+        Write-Host "https://github.com/massgravel/Microsoft-Activation-Scripts" -ForegroundColor Cyan
+    } finally {
+        Remove-Item -Path $masPath -Force -ErrorAction SilentlyContinue
     }
 }
 

@@ -40,14 +40,14 @@ Work Directory:
 
 Requires Admin: Yes
 
-Version: 1.0.0
+Version: 2.0.1
 #>
 # ============================================================================
 # Creates a bootable VHD/VHDX file for dual/multi-boot Windows installations
 # ============================================================================
 
 
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Continue'
 $script:WorkDir = "C:\System_Optimizer\VHD"
 $script:MountDir = "$WorkDir\Mount"
 $script:DriverDir = "$WorkDir\Drivers"
@@ -128,6 +128,110 @@ function Initialize-VHDDirectory {
             New-Item -ItemType Directory -Path $_ -Force | Out-Null
         }
     }
+}
+
+function Read-VHDSizeGB {
+    param([string]$Prompt, [int]$Default = 100)
+
+    $value = Read-Host $Prompt
+    if ([string]::IsNullOrWhiteSpace($value)) { return $Default }
+
+    $size = 0
+    if (-not [int]::TryParse($value, [ref]$size) -or $size -lt 20 -or $size -gt 4096) {
+        Write-VHDLog "Invalid VHD size. Use an integer between 20 and 4096 GB." "ERROR"
+        return $null
+    }
+    return $size
+}
+
+function Read-VHDDriveLetter {
+    param([string]$Prompt, [string]$Default = "W")
+
+    $value = Read-Host $Prompt
+    if ([string]::IsNullOrWhiteSpace($value)) { $value = $Default }
+
+    $letter = $value.Trim().ToUpper()
+    if ($letter -notmatch '^[A-Z]$') {
+        Write-VHDLog "Invalid drive letter: $value" "ERROR"
+        return $null
+    }
+
+    return $letter
+}
+
+function Read-VHDBootName {
+    param([string]$Prompt, [string]$Default = "Windows-VHD")
+
+    $value = Read-Host $Prompt
+    if ([string]::IsNullOrWhiteSpace($value)) { return $Default }
+
+    if ($value -notmatch '^[A-Za-z0-9 _.-]{1,64}$') {
+        Write-VHDLog "Invalid boot entry name. Allowed: letters, numbers, space, ., _, -" "ERROR"
+        return $null
+    }
+
+    return $value
+}
+
+function Read-VHDImageIndex {
+    param(
+        [Parameter(Mandatory)]
+        [object[]]$Images,
+        [string]$Prompt = "Select edition index"
+    )
+
+    $value = Read-Host $Prompt
+    $index = 0
+    if (-not [int]::TryParse($value, [ref]$index) -or $index -lt 1) {
+        Write-VHDLog "Invalid edition index: $value" "ERROR"
+        return $null
+    }
+
+    $validIndexes = $Images | ForEach-Object { [int]$_.ImageIndex }
+    if ($index -notin $validIndexes) {
+        Write-VHDLog "Edition index $index is not available in selected image" "ERROR"
+        return $null
+    }
+
+    return $index
+}
+
+function Test-VHDPathValue {
+    param([string]$PathValue)
+
+    if ([string]::IsNullOrWhiteSpace($PathValue)) { return $false }
+    if (-not [System.IO.Path]::IsPathRooted($PathValue)) {
+        Write-VHDLog "VHD path must be an absolute path: $PathValue" "ERROR"
+        return $false
+    }
+    if ($PathValue -notmatch '\.(vhd|vhdx)$') {
+        Write-VHDLog "VHD path must end in .vhd or .vhdx: $PathValue" "ERROR"
+        return $false
+    }
+    return $true
+}
+
+function Get-SystemOptimizerBootstrapCommand {
+    return '$file = Join-Path $env:TEMP ''SystemOptimizer.exe''; Invoke-WebRequest -Uri ''https://github.com/coff33ninja/System_optimizer/releases/latest/download/SystemOptimizer.exe'' -OutFile $file -UseBasicParsing -TimeoutSec 120; Start-Process -FilePath $file -Verb RunAs'
+}
+
+function Confirm-VHDAction {
+    param(
+        [Parameter(Mandatory)]
+        [string]$WarningText,
+        [Parameter(Mandatory)]
+        [string]$ConfirmationText
+    )
+
+    Write-Host ""
+    Write-Host "  WARNING: $WarningText" -ForegroundColor Red
+    Write-Host "  Type '$ConfirmationText' to continue." -ForegroundColor Yellow
+    $confirm = Read-Host "Confirmation"
+    if ($confirm -cne $ConfirmationText) {
+        Write-VHDLog "Operation cancelled by user" "WARNING"
+        return $false
+    }
+    return $true
 }
 
 function Show-VHDMenu {
@@ -230,12 +334,14 @@ function Start-CreateEmptyVHD {
     Write-Host "  Default path: $defaultPath" -ForegroundColor Gray
     $vhdPath = Read-Host "Enter VHD path (or press Enter for default)"
     if ([string]::IsNullOrEmpty($vhdPath)) { $vhdPath = $defaultPath }
+    if (-not (Test-VHDPathValue $vhdPath)) { return }
 
     # Check if file exists
     if (Test-Path $vhdPath) {
         Write-VHDLog "VHD already exists at $vhdPath" "WARNING"
-        $overwrite = Read-Host "Overwrite? (Y/N)"
-        if ($overwrite -ne "Y" -and $overwrite -ne "y") { return }
+        if (-not (Confirm-VHDAction -WarningText "Overwriting will permanently delete the existing VHD at $vhdPath." -ConfirmationText "OVERWRITE VHD")) {
+            return
+        }
 
         # Try to dismount first
         try { Dismount-VHD -Path $vhdPath -ErrorAction SilentlyContinue } catch {
@@ -247,14 +353,14 @@ function Start-CreateEmptyVHD {
 
     # Get size
     Write-Host ""
-    $sizeGB = Read-Host "Enter VHD size in GB (default: 100)"
-    if ([string]::IsNullOrEmpty($sizeGB)) { $sizeGB = 100 }
+    $sizeGB = Read-VHDSizeGB "Enter VHD size in GB (default: 100)" 100
+    if ($null -eq $sizeGB) { return }
     $sizeMB = [int]$sizeGB * 1024
 
     # Get drive letter
     Write-Host ""
-    $driveLetter = Read-Host "Enter drive letter for VHD (default: W)"
-    if ([string]::IsNullOrEmpty($driveLetter)) { $driveLetter = "W" }
+    $driveLetter = Read-VHDDriveLetter "Enter drive letter for VHD (default: W)" "W"
+    if ($null -eq $driveLetter) { return }
 
     # Create VHD
     $result = New-EmptyVHD -VHDPath $vhdPath -SizeMB $sizeMB -PartitionStyle $Style -DriveLetter $driveLetter
@@ -413,7 +519,8 @@ function Install-WindowsToVHD {
     }
     Write-Host ""
 
-    $index = Read-Host "Select edition index"
+    $index = Read-VHDImageIndex -Images $images -Prompt "Select edition index"
+    if ($null -eq $index) { return }
 
     # Apply image
     Write-VHDLog "Applying Windows image to W: drive..."
@@ -449,8 +556,12 @@ function Add-VHDToBootMenu {
     }
 
     Write-Host ""
-    $bootName = Read-Host "Enter boot menu name (default: Windows-VHD)"
-    if ([string]::IsNullOrEmpty($bootName)) { $bootName = "Windows-VHD" }
+    $bootName = Read-VHDBootName "Enter boot menu name (default: Windows-VHD)" "Windows-VHD"
+    if ($null -eq $bootName) { return }
+
+    if (-not (Confirm-VHDAction -WarningText "A new boot entry '$bootName' will be added to BCD." -ConfirmationText "ADD BOOT ENTRY")) {
+        return
+    }
 
     Write-VHDLog "Creating boot entry..."
 
@@ -581,9 +692,10 @@ function Start-QuickVHDDeploy {
     $defaultPath = "$WorkDir\Windows.vhdx"
     $vhdPath = Read-Host "VHD path (default: $defaultPath)"
     if ([string]::IsNullOrEmpty($vhdPath)) { $vhdPath = $defaultPath }
+    if (-not (Test-VHDPathValue $vhdPath)) { return }
 
-    $sizeGB = Read-Host "VHD size in GB (default: 100)"
-    if ([string]::IsNullOrEmpty($sizeGB)) { $sizeGB = 100 }
+    $sizeGB = Read-VHDSizeGB "VHD size in GB (default: 100)" 100
+    if ($null -eq $sizeGB) { return }
 
     Write-Host ""
     Write-Host "  [1] GPT (UEFI) - Recommended"
@@ -593,6 +705,9 @@ function Start-QuickVHDDeploy {
 
     # Check if exists
     if (Test-Path $vhdPath) {
+        if (-not (Confirm-VHDAction -WarningText "Quick deploy will overwrite the existing VHD at $vhdPath." -ConfirmationText "OVERWRITE VHD")) {
+            return
+        }
         try { Dismount-VHD -Path $vhdPath -ErrorAction SilentlyContinue } catch {
             # VHD may not be mounted - continue
             $null
@@ -637,7 +752,8 @@ function Start-QuickVHDDeploy {
     foreach ($img in $images) {
         Write-Host "    [$($img.ImageIndex)] $($img.ImageName)" -ForegroundColor Gray
     }
-    $index = Read-Host "Select edition index"
+    $index = Read-VHDImageIndex -Images $images -Prompt "Select edition index"
+    if ($null -eq $index) { return }
 
     # Deploy
     Write-Host ""
@@ -666,8 +782,12 @@ function Start-QuickVHDDeploy {
     Write-Host ""
     Write-Host "Step 6: Adding to boot menu..." -ForegroundColor Yellow
 
-    $bootName = Read-Host "Boot menu name (default: Windows-VHD)"
-    if ([string]::IsNullOrEmpty($bootName)) { $bootName = "Windows-VHD" }
+    $bootName = Read-VHDBootName "Boot menu name (default: Windows-VHD)" "Windows-VHD"
+    if ($null -eq $bootName) { return }
+
+    if (-not (Confirm-VHDAction -WarningText "A new boot entry '$bootName' will be added to BCD." -ConfirmationText "ADD BOOT ENTRY")) {
+        return
+    }
 
     & W:\Windows\System32\bcdboot.exe W:\Windows
     bcdedit /set "{default}" description "$bootName"
@@ -681,11 +801,13 @@ function Start-QuickVHDDeploy {
 
     # Create .lnk shortcut using VBScript
     try {
+        $bootstrapCmd = Get-SystemOptimizerBootstrapCommand
+        $escapedBootstrap = $bootstrapCmd.Replace('"', '""')
         $vbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
 Set shortcut = WshShell.CreateShortcut("$defaultDesktop\System Optimizer.lnk")
 shortcut.TargetPath = "powershell.exe"
-shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
+shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""$escapedBootstrap"""
 shortcut.Description = "System Optimizer - Windows Optimization Toolkit"
 shortcut.WorkingDirectory = "%USERPROFILE%"
 shortcut.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
@@ -693,7 +815,7 @@ shortcut.Save
 
 Set shortcut2 = WshShell.CreateShortcut("$publicDesktop\System Optimizer.lnk")
 shortcut2.TargetPath = "powershell.exe"
-shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
+shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""$escapedBootstrap"""
 shortcut2.Description = "System Optimizer - Windows Optimization Toolkit"
 shortcut2.WorkingDirectory = "%USERPROFILE%"
 shortcut2.IconLocation = "%SystemRoot%\System32\shell32.dll,14"

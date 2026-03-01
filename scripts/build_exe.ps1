@@ -2,7 +2,7 @@
 # This script builds the EXE locally for testing
 
 param(
-    [string]$Version = "1.0.0"
+    [string]$Version = ""
 )
 
 Write-Host "Building System Optimizer EXE..." -ForegroundColor Cyan
@@ -28,11 +28,27 @@ if (-not (Get-Module -ListAvailable -Name ps2exe)) {
 
 Import-Module ps2exe
 
+$repoRoot = Split-Path $PSScriptRoot -Parent
+$versionFile = Join-Path $repoRoot "version.psd1"
+if ([string]::IsNullOrWhiteSpace($Version) -and (Test-Path $versionFile)) {
+    try {
+        $versionData = Import-PowerShellDataFile -Path $versionFile
+        if ($versionData.Version) {
+            $Version = [string]$versionData.Version
+        }
+    } catch {
+        Write-Host "Could not parse version.psd1, falling back to 2.0.1" -ForegroundColor Yellow
+    }
+}
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = "2.0.1"
+}
+
 # Build the EXE with embedded modules
 try {
-    $inputFile = Join-Path (Split-Path $PSScriptRoot -Parent) "Start-SystemOptimizer.ps1"
-    $outputFile = Join-Path (Split-Path $PSScriptRoot -Parent) "SystemOptimizer.exe"
-    $modulesDir = Join-Path (Split-Path $PSScriptRoot -Parent) "modules"
+    $inputFile = Join-Path $repoRoot "Start-SystemOptimizer.ps1"
+    $outputFile = Join-Path $repoRoot "SystemOptimizer.exe"
+    $modulesDir = Join-Path $repoRoot "modules"
     
     if (-not (Test-Path $inputFile)) {
         throw "Input file not found: $inputFile"
@@ -51,6 +67,11 @@ try {
         $targetPath = ".\modules\$($moduleFile.Name)"
         $embedFiles[$targetPath] = $moduleFile.FullName
         Write-Host "  - $($moduleFile.Name)" -ForegroundColor Gray
+    }
+
+    if (Test-Path $versionFile) {
+        $embedFiles[".\version.psd1"] = $versionFile
+        Write-Host "  - version.psd1" -ForegroundColor Gray
     }
     
     Write-Host "`nBuilding EXE with embedded modules..." -ForegroundColor Yellow

@@ -46,7 +46,7 @@ echo   SYSTEM OPTIMIZER - LAUNCH METHODS MENU
 echo ==================================================================================
 echo.
 echo   RECOMMENDED - Modular Version:
-echo   [1] Start-SystemOptimizer.ps1 (Download from GitHub)
+echo   [1] Launch System Optimizer (release bootstrap)
 echo.
 echo   Command-Line Options (Modular):
 echo   [2] Run All Optimizations (non-interactive)
@@ -72,12 +72,12 @@ goto menu
 cls
 echo.
 echo ==================================================================================
-echo   MODULAR VERSION - Download from GitHub
+echo   SYSTEM OPTIMIZER - RELEASE BOOTSTRAP
 echo ==================================================================================
 echo.
-echo   [*] Downloading Start-SystemOptimizer.ps1 and modules...
+echo   [*] Downloading SystemOptimizer.exe from GitHub releases...
 echo.
-powershell -ExecutionPolicy Bypass -Command "try { $dest = \"$env:TEMP\SystemOptimizer\"; New-Item -ItemType Directory -Path $dest -Force | Out-Null; Write-Host '[*] Downloading entry point...' -ForegroundColor Yellow; irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/Start-SystemOptimizer.ps1' -OutFile \"$dest\Start-SystemOptimizer.ps1\"; Write-Host '[*] Downloading modules...' -ForegroundColor Yellow; $modules = @('Backup','Bloatware','Core','Drivers','Hardware','Help','ImageTool','Installer','Logging','Maintenance','Network','OneDrive','Power','Privacy','Profiles','Registry','Rollback','Security','Services','Shutdown','Software','Tasks','Telemetry','UITweaks','Utilities','VBS','VHDDeploy','Warning','WindowsUpdate'); New-Item -ItemType Directory -Path \"$dest\modules\" -Force | Out-Null; foreach($m in $modules) { irm \"https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/modules/$m.psm1\" -OutFile \"$dest\modules\$m.psm1\" }; Write-Host '[+] Download complete!' -ForegroundColor Green; Set-Location $dest; & \"$dest\Start-SystemOptimizer.ps1\" } catch { Write-Host 'Error: ' $_.Exception.Message -ForegroundColor Red; pause }"
+powershell -ExecutionPolicy Bypass -Command "try { $dest = \"$env:TEMP\SystemOptimizer\"; New-Item -ItemType Directory -Path $dest -Force | Out-Null; $exePath = Join-Path $dest 'SystemOptimizer.exe'; $versionFile = Join-Path (Get-Location) 'version.psd1'; $releaseTag = 'latest'; if (Test-Path $versionFile) { try { $versionData = Import-PowerShellDataFile -Path $versionFile; if ($versionData.Version) { $releaseTag = 'v' + [string]$versionData.Version } } catch { } }; if ($releaseTag -eq 'latest') { $releaseUrl = 'https://github.com/coff33ninja/System_optimizer/releases/latest/download/SystemOptimizer.exe' } else { $releaseUrl = 'https://github.com/coff33ninja/System_optimizer/releases/download/' + $releaseTag + '/SystemOptimizer.exe' }; Invoke-WebRequest -Uri $releaseUrl -OutFile $exePath -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop; Write-Host '[+] Download complete' -ForegroundColor Green; & $exePath } catch { Write-Host 'Error: ' $_.Exception.Message -ForegroundColor Red; pause }"
 goto continue
 
 :run_all
@@ -141,7 +141,7 @@ if exist "configs\experiments\fun-backup-system\Epic_Backup_Adventure.ps1" (
     powershell -ExecutionPolicy Bypass -NoProfile -File ".\configs\experiments\fun-backup-system\Epic_Backup_Adventure.ps1"
 ) else (
     echo   [-] Local file not found, downloading from GitHub...
-    powershell -ExecutionPolicy Bypass -Command "try { irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/configs/experiments/fun-backup-system/Epic_Backup_Adventure.ps1' | iex } catch { Write-Host 'Error: ' $_.Exception.Message -ForegroundColor Red; pause }"
+    powershell -ExecutionPolicy Bypass -Command "try { $path = Join-Path $env:TEMP 'Epic_Backup_Adventure.ps1'; $versionFile = Join-Path (Get-Location) 'version.psd1'; $releaseTag = 'main'; if (Test-Path $versionFile) { try { $versionData = Import-PowerShellDataFile -Path $versionFile; if ($versionData.Version) { $releaseTag = 'v' + [string]$versionData.Version } } catch { } }; $uri = 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/' + $releaseTag + '/configs/experiments/fun-backup-system/Epic_Backup_Adventure.ps1'; Invoke-WebRequest -Uri $uri -OutFile $path -UseBasicParsing -TimeoutSec 60; & $path } catch { Write-Host 'Error: ' $_.Exception.Message -ForegroundColor Red; pause }"
 )
 goto continue
 

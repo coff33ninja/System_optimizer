@@ -35,19 +35,46 @@ $ScriptRoot = Split-Path -Parent $PSScriptRoot
 $ModulesPath = Join-Path $ScriptRoot "modules"
 $MainScript = Join-Path $ScriptRoot "Start-SystemOptimizer.ps1"
 $ChangelogPath = Join-Path $ScriptRoot "CHANGELOG.md"
-$VersionFile = Join-Path $ScriptRoot "configs\VERSION.json"
+$VersionFile = Join-Path $ScriptRoot "version.psd1"
+$LegacyVersionFile = Join-Path $ScriptRoot "configs\VERSION.json"
 
 # ============================================================================
 # VERSION DATA STRUCTURE
 # ============================================================================
-function Get-VersionData {
+function Get-CanonicalVersion {
     if (Test-Path $VersionFile) {
-        return Get-Content $VersionFile -Raw | ConvertFrom-Json
+        try {
+            $versionData = Import-PowerShellDataFile -Path $VersionFile
+            if ($versionData.Version -and ([string]$versionData.Version -match '^\d+\.\d+\.\d+$')) {
+                return [string]$versionData.Version
+            }
+        } catch {
+            Write-Host "[!] Could not parse version.psd1: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
     }
-    
+
+    if (Test-Path $MainScript) {
+        $content = Get-Content $MainScript -Raw -ErrorAction SilentlyContinue
+        if ($content -match 'Version\s*=\s*"(\d+\.\d+\.\d+)"') {
+            return $matches[1]
+        }
+    }
+
+    return "0.0.0"
+}
+
+function Get-VersionData {
+    $canonicalVersion = Get-CanonicalVersion
+
+    if (Test-Path $LegacyVersionFile) {
+        $legacy = Get-Content $LegacyVersionFile -Raw | ConvertFrom-Json
+        $legacy.Version = $canonicalVersion
+        return $legacy
+    }
+
     # Initialize version data with PSCustomObject for Modules
     return [PSCustomObject]@{
-        Version = "2.1.0"
+        Version = $canonicalVersion
         LastUpdated = (Get-Date -Format "o")
         Modules = [PSCustomObject]@{}
     }
@@ -56,13 +83,22 @@ function Get-VersionData {
 function Save-VersionData {
     param($Data)
     $Data.LastUpdated = Get-Date -Format "o"
-    $Data | ConvertTo-Json -Depth 5 | Set-Content $VersionFile -Encoding UTF8
+    $version = [string]$Data.Version
+    @"
+@{
+    Version = '$version'
+}
+"@ | Set-Content -Path $VersionFile -Encoding UTF8 -NoNewline
+
+    if ($Data.Modules) {
+        $Data | ConvertTo-Json -Depth 5 | Set-Content $LegacyVersionFile -Encoding UTF8
+    }
 }
 
 # ============================================================================
 # VERSION PARSING
 # ============================================================================
-function Parse-Version {
+function ConvertTo-VersionParts {
     param([string]$Ver)
     if ($Ver -match '^(\d+)\.(\d+)\.(\d+)$') {
         return @{
@@ -75,13 +111,13 @@ function Parse-Version {
     return $null
 }
 
-function Bump-Version {
+function Update-VersionNumber {
     param(
         [string]$CurrentVersion,
         [string]$BumpType
     )
     
-    $v = Parse-Version $CurrentVersion
+    $v = ConvertTo-VersionParts $CurrentVersion
     if (-not $v) { $v = @{ Major = 1; Minor = 0; Patch = 0 } }
     
     switch ($BumpType) {
@@ -109,7 +145,7 @@ function Get-ModuleVersion {
         return $matches[1]
     }
     
-    return "1.0.0"  # Default
+    return (Get-CanonicalVersion)
 }
 
 function Set-ModuleVersion {
@@ -140,7 +176,7 @@ function Get-MainScriptVersion {
     if ($content -match 'Version\s*=\s*"(\d+\.\d+\.\d+)"') {
         return $matches[1]
     }
-    return "1.0.0"
+    return (Get-CanonicalVersion)
 }
 
 function Set-MainScriptVersion {
@@ -261,7 +297,7 @@ function Show-VersionReport {
     Write-Host "`n  Main Script: v$mainVersion" -ForegroundColor White
     
     $versionData = Get-VersionData
-    Write-Host "  VERSION.json: v$($versionData.Version)" -ForegroundColor $(if ($versionData.Version -eq $mainVersion) { 'Green' } else { 'Red' })
+    Write-Host "  version.psd1: v$($versionData.Version)" -ForegroundColor $(if ($versionData.Version -eq $mainVersion) { 'Green' } else { 'Red' })
     
     Write-Host "`n  Module Versions:" -ForegroundColor Gray
     Write-Host "  " + ("-" * 50)
@@ -312,13 +348,13 @@ function Invoke-BumpModule {
     }
     
     $currentVer = Get-ModuleVersion $modulePath
-    $newVer = Bump-Version $currentVer $BumpType
+    $newVer = Update-VersionNumber $currentVer $BumpType
     
     Write-Host "[*] Bumping $ModuleName`: v$currentVer -> v$newVer" -ForegroundColor Yellow
     
     Set-ModuleVersion -ModulePath $modulePath -NewVersion $newVer
     
-    # Update VERSION.json
+    # Update version metadata
     $versionData = Get-VersionData
     if (-not $versionData.Modules) { $versionData | Add-Member -NotePropertyName Modules -NotePropertyValue ([PSCustomObject]@{}) -Force }
     $versionData.Modules | Add-Member -NotePropertyName $ModuleName -NotePropertyValue $newVer -Force
@@ -338,7 +374,7 @@ function Invoke-BumpAll {
     
     foreach ($mod in $modules) {
         $currentVer = Get-ModuleVersion $mod.FullName
-        $newVer = Bump-Version $currentVer $BumpType
+        $newVer = Update-VersionNumber $currentVer $BumpType
         
         Set-ModuleVersion -ModulePath $mod.FullName -NewVersion $newVer
         $versionData.Modules | Add-Member -NotePropertyName $mod.BaseName -NotePropertyValue $newVer -Force
@@ -348,7 +384,7 @@ function Invoke-BumpAll {
     
     # Bump main version too
     $mainVer = Get-MainScriptVersion
-    $newMainVer = Bump-Version $mainVer $BumpType
+    $newMainVer = Update-VersionNumber $mainVer $BumpType
     Set-MainScriptVersion $newMainVer
     $versionData.Version = $newMainVer
     
@@ -366,7 +402,7 @@ function Invoke-Release {
     if (-not $ReleaseVersion) {
         # Auto-bump patch if no version specified
         $currentVer = Get-MainScriptVersion
-        $ReleaseVersion = Bump-Version $currentVer 'Patch'
+        $ReleaseVersion = Update-VersionNumber $currentVer 'Patch'
     }
     
     if (-not $ReleaseMessage) {
@@ -384,14 +420,14 @@ function Invoke-Release {
     Set-MainScriptVersion $ReleaseVersion
     Write-Host "  [+] Start-SystemOptimizer.ps1 -> v$ReleaseVersion" -ForegroundColor Green
     
-    # 2. Update VERSION.json
-    Write-Host "[2/5] Updating VERSION.json..." -ForegroundColor Yellow
+    # 2. Update version metadata
+    Write-Host "[2/5] Updating version.psd1..." -ForegroundColor Yellow
     $versionData = Get-VersionData
     $versionData.Version = $ReleaseVersion
     Save-VersionData $versionData
-    Write-Host "  [+] VERSION.json -> v$ReleaseVersion" -ForegroundColor Green
+    Write-Host "  [+] version.psd1 -> v$ReleaseVersion" -ForegroundColor Green
     
-    # 3. Sync module versions to VERSION.json
+    # 3. Sync module versions to metadata
     Write-Host "[3/5] Syncing module versions..." -ForegroundColor Yellow
     $modules = Get-ChildItem $ModulesPath -Filter "*.psm1"
     if (-not $versionData.Modules) { $versionData | Add-Member -NotePropertyName Modules -NotePropertyValue ([PSCustomObject]@{}) -Force }
@@ -451,11 +487,11 @@ function Invoke-Validate {
     $versionData = Get-VersionData
     $mainVersion = Get-MainScriptVersion
     
-    # Check main script vs VERSION.json
+    # Check main script vs version metadata
     Write-Host "[*] Checking main script version..." -ForegroundColor Yellow
     if ($versionData.Version -ne $mainVersion) {
-        $issues += "Main script ($mainVersion) != VERSION.json ($($versionData.Version))"
-        Write-Host "  [X] Mismatch: Script=$mainVersion, JSON=$($versionData.Version)" -ForegroundColor Red
+        $issues += "Main script ($mainVersion) != version.psd1 ($($versionData.Version))"
+        Write-Host "  [X] Mismatch: Script=$mainVersion, version.psd1=$($versionData.Version)" -ForegroundColor Red
     } else {
         Write-Host "  [OK] Main version: v$mainVersion" -ForegroundColor Green
     }
@@ -469,20 +505,20 @@ function Invoke-Validate {
         $jsonVer = $versionData.Modules.($mod.BaseName)
         
         if (-not $jsonVer) {
-            $issues += "$($mod.BaseName): Not in VERSION.json"
-            Write-Host "  [!] $($mod.BaseName): Not tracked in VERSION.json" -ForegroundColor Yellow
+            $issues += "$($mod.BaseName): Not in version metadata"
+            Write-Host "  [!] $($mod.BaseName): Not tracked in version metadata" -ForegroundColor Yellow
         } elseif ($fileVer -ne $jsonVer) {
             $issues += "$($mod.BaseName): File=$fileVer, JSON=$jsonVer"
             Write-Host "  [X] $($mod.BaseName): File=$fileVer, JSON=$jsonVer" -ForegroundColor Red
         }
     }
     
-    # Check for orphaned entries in VERSION.json
+    # Check for orphaned entries in version metadata
     if ($versionData.Modules) {
         $moduleNames = $modules | ForEach-Object { $_.BaseName }
         $versionData.Modules.PSObject.Properties | ForEach-Object {
             if ($_.Name -notin $moduleNames) {
-                $issues += "$($_.Name): In VERSION.json but module file missing"
+                $issues += "$($_.Name): In version metadata but module file missing"
                 Write-Host "  [!] $($_.Name): Orphaned entry (no .psm1 file)" -ForegroundColor Yellow
             }
         }
@@ -533,7 +569,7 @@ function Invoke-Sync {
     # Sync main version
     Write-Host "[*] Syncing main version..." -ForegroundColor Yellow
     $versionData.Version = $mainVersion
-    Write-Host "  [+] VERSION.json set to v$mainVersion" -ForegroundColor Green
+    Write-Host "  [+] version.psd1 set to v$mainVersion" -ForegroundColor Green
     
     # Sync all modules
     Write-Host "[*] Syncing module versions..." -ForegroundColor Yellow
@@ -570,7 +606,7 @@ function Invoke-Sync {
     Save-VersionData $versionData
     
     Write-Host ""
-    Write-Host "[+] Synced $synced modules to VERSION.json" -ForegroundColor Green
+    Write-Host "[+] Synced $synced modules to version metadata" -ForegroundColor Green
 }
 
 function Show-ChangelogPreview {

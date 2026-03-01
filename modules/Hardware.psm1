@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Hardware Module - System Optimizer
@@ -34,7 +34,7 @@ Compatibility:
 
 Requires Admin: No (basic), Yes (full)
 
-Version: 1.0.0
+Version: 2.0.1
 #>
 
 # ============================================================================

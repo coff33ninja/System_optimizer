@@ -31,8 +31,92 @@ Repair Operations:
 
 Requires Admin: Yes
 
-Version: 1.0.0
+Version: 2.0.1
 #>
+
+$script:VersionInfo = $null
+
+function Get-SystemOptimizerVersionInfo {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $candidates = @(
+        (Join-Path $repoRoot "version.psd1"),
+        (Join-Path (Get-Location) "version.psd1"),
+        "C:\System_Optimizer\version.psd1"
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            $data = Import-PowerShellDataFile -Path $candidate
+            if ($data.Version) {
+                $version = [string]$data.Version
+                $releaseTag = "v$version"
+                return @{
+                    Version = $version
+                    ReleaseTag = $releaseTag
+                }
+            }
+        } catch {
+            $null
+        }
+    }
+
+    return @{
+        Version = "2.0.1"
+        ReleaseTag = "v2.0.1"
+    }
+}
+
+$script:VersionInfo = Get-SystemOptimizerVersionInfo
+$script:PinnedReleaseTag = $script:VersionInfo.ReleaseTag
+$script:TrustedToolHashes = @{
+    "WUpdater.exe" = "1147859E1DBF8AA8F4AF8FE08923F3A666790AF0C299068A514BEE901B2D389C"
+}
+
+function Test-TrustedFileHash {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+        [Parameter(Mandatory)]
+        [string]$ExpectedHash
+    )
+
+    if (-not (Test-Path $Path)) { return $false }
+    $actual = (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToUpper()
+    return ($actual -eq $ExpectedHash.ToUpper())
+}
+
+function Get-TrustedToolFile {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FileName,
+        [Parameter(Mandatory)]
+        [string]$DestinationPath
+    )
+
+    $expectedHash = $script:TrustedToolHashes[$FileName]
+    if (-not $expectedHash) {
+        throw "No trusted hash configured for $FileName"
+    }
+
+    $moduleParent = Split-Path -Parent $PSScriptRoot
+    $bundledPath = Join-Path $moduleParent "tools\$FileName"
+    if (Test-Path $bundledPath) {
+        Copy-Item -Path $bundledPath -Destination $DestinationPath -Force
+        if (Test-TrustedFileHash -Path $DestinationPath -ExpectedHash $expectedHash) {
+            return $DestinationPath
+        }
+        throw "Bundled tool hash mismatch for $FileName"
+    }
+
+    $releaseUrl = "https://github.com/coff33ninja/System_optimizer/releases/download/$($script:PinnedReleaseTag)/$FileName"
+    Invoke-WebRequest -Uri $releaseUrl -OutFile $DestinationPath -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
+    if (Test-TrustedFileHash -Path $DestinationPath -ExpectedHash $expectedHash) {
+        return $DestinationPath
+    }
+    Remove-Item -Path $DestinationPath -Force -ErrorAction SilentlyContinue
+    throw "Downloaded tool hash mismatch for $FileName"
+}
 
 function Set-WindowsUpdateControl {
     do {
@@ -124,8 +208,8 @@ function Set-UpdatePauseTask {
 
     $days = Read-Host "Enter number of days to pause updates"
 
-    if (-not [int]::TryParse($days, [ref]$null) -or [int]$days -lt 1) {
-        Write-Log "Invalid number of days" "ERROR"
+    if (-not [int]::TryParse($days, [ref]$null) -or [int]$days -lt 1 -or [int]$days -gt 365) {
+        Write-Log "Invalid number of days. Use a value between 1 and 365." "ERROR"
         return
     }
 
@@ -167,9 +251,9 @@ function Start-WUpdater {
     $exePath = "$BaseDir\WUpdater.exe"
 
     try {
-        Write-Log "Downloading WUpdater..."
-        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/tools/WUpdater.exe" -OutFile $exePath -UseBasicParsing
-        Write-Log "Downloaded WUpdater" "SUCCESS"
+        Write-Log "Preparing trusted WUpdater..."
+        Get-TrustedToolFile -FileName "WUpdater.exe" -DestinationPath $exePath | Out-Null
+        Write-Log "Trusted WUpdater ready (hash verified)" "SUCCESS"
 
         Write-Log "Launching WUpdater..."
         Start-Process -FilePath $exePath
@@ -322,6 +406,14 @@ function Repair-WindowsUpdate {
         }
         "2" {
             try {
+                Write-Host ""
+                Write-Host "WARNING: Full repair resets core Windows Update components and network stack." -ForegroundColor Yellow
+                $confirm = Read-Host "Type 'FULL REPAIR' to continue"
+                if ($confirm -ne "FULL REPAIR") {
+                    Write-Log "Full repair cancelled by user" "WARNING"
+                    return
+                }
+
                 Write-Log "Performing full Windows Update repair (this may take a while)..."
 
                 # Stop services

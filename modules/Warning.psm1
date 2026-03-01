@@ -9,7 +9,7 @@
     Stores consent in registry to avoid showing on subsequent runs.
 
 .NOTES
-    Version: 1.0.0
+    Version: 2.0.1
     Author: System Optimizer Team
     
 .EXPORTED FUNCTIONS

@@ -25,17 +25,32 @@ jobs:
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           echo "TAG=$tag" >> $env:GITHUB_OUTPUT
 
-      - name: Verify version in script
+      - name: Sync and verify version metadata
         shell: pwsh
         run: |
-          $scriptContent = Get-Content Start-SystemOptimizer.ps1 -Raw
-          if ($scriptContent -match 'Version\s*=\s*"([^"]+)"') {
-            $scriptVersion = $matches[1]
-            Write-Host "Script version: $scriptVersion"
-            Write-Host "Tag version: ${{ steps.version.outputs.VERSION }}"
-            if ($scriptVersion -ne "${{ steps.version.outputs.VERSION }}") {
-              Write-Warning "Version mismatch! Update Start-SystemOptimizer.ps1"
-            }
+          $expectedVersion = "${{ steps.version.outputs.VERSION }}"
+
+          .\scripts\sync-version.ps1 -Version $expectedVersion
+          .\scripts\stamp-version.ps1 -Version $expectedVersion
+
+          $versionData = Import-PowerShellDataFile -Path ".\version.psd1"
+          $actualVersion = [string]$versionData.Version
+          if ($actualVersion -ne $expectedVersion) {
+            throw "version.psd1 mismatch: expected $expectedVersion, found $actualVersion"
+          }
+
+          $status = git status --porcelain
+          if ($status) {
+            Write-Host "Version metadata drift detected:" -ForegroundColor Red
+            $status
+            git --no-pager diff -- .github/workflows/release.yml version.psd1 Start-SystemOptimizer.ps1 modules/*.psm1 run_optimization.bat scripts/sync-version.ps1 scripts/stamp-version.ps1
+            throw "Version mismatch between tag and tracked files."
+          }
+
+          $changelog = Get-Content CHANGELOG.md -Raw
+          $versionEscaped = [regex]::Escape($expectedVersion)
+          if ($changelog -notmatch "(?m)^## \[$versionEscaped\]") {
+            throw "CHANGELOG.md is missing section [$expectedVersion]"
           }
 
       - name: Build EXE with ps2exe
@@ -79,8 +94,15 @@ jobs:
           foreach ($moduleFile in $moduleFiles) {
             $embedFiles[".\modules\$($moduleFile.Name)"] = $moduleFile.FullName
           }
+
+          if (-not (Test-Path "version.psd1")) {
+            Write-Error "version.psd1 not found in repository root"
+            exit 1
+          }
+          $embedFiles[".\version.psd1"] = (Resolve-Path "version.psd1").Path
+
           $ps2exeParams['embedFiles'] = $embedFiles
-          Write-Host "Embedding $($moduleFiles.Count) modules" -ForegroundColor Green
+          Write-Host "Embedding $($moduleFiles.Count) modules and version.psd1" -ForegroundColor Green
           
           # Add icon if it exists
           if (Test-Path "icon.ico") {

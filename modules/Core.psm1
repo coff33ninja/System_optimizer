@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Core Module - System Optimizer
@@ -28,7 +28,7 @@ Notes:
     - Supports both console and GUI progress displays
     - Thread-safe for use in parallel operations
 
-Version: 1.0.0
+Version: 2.0.1
 #>
 
 # ============================================================================
@@ -652,73 +652,21 @@ function Start-Download {
             }
         }
 
-        # Fallback: Invoke-WebRequest with manual progress
-        $webClient = New-Object System.Net.WebClient
-
-        # Get file size first
+        # Fallback: synchronous web download with explicit timeout to avoid hangs
+        $downloadTimeoutSec = 900
         try {
-            $request = [System.Net.WebRequest]::Create($Url)
-            $request.Method = "HEAD"
-            $response = $request.GetResponse()
-            $totalBytes = $response.ContentLength
-            $response.Close()
-        } catch {
-            $totalBytes = -1
-        }
-
-        if ($totalBytes -gt 0) {
-            $totalMB = [math]::Round($totalBytes / 1MB, 2)
-            Write-Host "  Size: $totalMB MB" -ForegroundColor DarkGray
-        }
-
-        # Download with progress callback
-        $startTime = Get-Date
-        $lastUpdate = Get-Date
-
-        Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -Action {
-            $percent = $EventArgs.ProgressPercentage
-            $received = $EventArgs.BytesReceived
-            $total = $EventArgs.TotalBytesToReceive
-
-            # Update every 500ms to avoid console spam
-            $now = Get-Date
-            if (($now - $script:lastUpdate).TotalMilliseconds -ge 500 -or $percent -eq 100) {
-                $script:lastUpdate = $now
-                $receivedMB = [math]::Round($received / 1MB, 1)
-                $totalMB = [math]::Round($total / 1MB, 1)
-
-                # Calculate speed
-                $elapsed = ($now - $script:startTime).TotalSeconds
-                if ($elapsed -gt 0) {
-                    $speed = [math]::Round(($received / 1MB) / $elapsed, 2)
-                    $speedText = "${speed} MB/s"
-                } else {
-                    $speedText = ""
-                }
-
-                # Progress bar
-                $width = 30
-                $filled = [math]::Round($width * $percent / 100)
-                $empty = $width - $filled
-                $bar = "#" * $filled + "-" * $empty
-
-                Write-Host "`r  [$bar] $percent% - $receivedMB/$totalMB MB - $speedText    " -NoNewline
+            $headResponse = Invoke-WebRequest -Uri $Url -Method Head -UseBasicParsing -TimeoutSec 20 -ErrorAction Stop
+            if ($headResponse.Headers['Content-Length']) {
+                $totalMB = [math]::Round(([double]$headResponse.Headers['Content-Length']) / 1MB, 2)
+                Write-Host "  Size: $totalMB MB" -ForegroundColor DarkGray
             }
-        } | Out-Null
-
-        Register-ObjectEvent -InputObject $webClient -EventName DownloadFileCompleted -Action {
-            Write-Host ""  # New line after progress
-        } | Out-Null
-
-        # Start async download and wait
-        $webClient.DownloadFileAsync([Uri]$Url, $OutFile)
-
-        while ($webClient.IsBusy) {
-            Start-Sleep -Milliseconds 100
+        } catch {
+            # Size check is optional - continue with download
+            $null
         }
 
-        # Cleanup events
-        Get-EventSubscriber | Where-Object { $_.SourceObject -eq $webClient } | Unregister-Event
+        Write-Host "  Downloading with timeout (${downloadTimeoutSec}s)..." -ForegroundColor DarkGray
+        Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -TimeoutSec $downloadTimeoutSec -ErrorAction Stop
 
         if (Test-Path $OutFile) {
             Write-Host "  [OK] Downloaded: $displayName" -ForegroundColor Green

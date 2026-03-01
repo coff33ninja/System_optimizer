@@ -54,8 +54,46 @@ if ([string]::IsNullOrEmpty($PSScriptRoot) -and (Test-Path ".\modules")) {
     }
 }
 
+function Get-SystemOptimizerVersionInfo {
+    param([string]$RootPath)
+
+    $candidates = @(
+        (Join-Path $RootPath "version.psd1"),
+        (Join-Path (Get-Location) "version.psd1"),
+        "C:\System_Optimizer\version.psd1"
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            $data = Import-PowerShellDataFile -Path $candidate
+            if ($data.Version) {
+                $version = [string]$data.Version
+                $releaseTag = "v$version"
+                return @{
+                    Version = $version
+                    ReleaseTag = $releaseTag
+                    Source = $candidate
+                }
+            }
+        } catch {
+            # Continue to next candidate
+            $null
+        }
+    }
+
+    return @{
+        Version = "2.0.1"
+        ReleaseTag = "v2.0.1"
+        Source = "fallback"
+    }
+}
+
+$script:VersionInfo = Get-SystemOptimizerVersionInfo -RootPath $scriptRoot
+
 $script:Config = @{
-    Version = "1.0.0"
+    Version = $VersionInfo.Version
+    ReleaseTag = $VersionInfo.ReleaseTag
     Root = $scriptRoot
     ModulesDir = if ($isEmbeddedEXE) { ".\modules" } else { "$scriptRoot\modules" }
     LogDir = "C:\System_Optimizer\Logs"
@@ -73,9 +111,16 @@ $script:LogFile = $null
 # ============================================================================
 function Get-LatestVersion {
     try {
-        $url = "https://raw.githubusercontent.com/$($Config.GitHubRepo)/$($Config.GitHubBranch)/Start-SystemOptimizer.ps1"
+        $url = "https://raw.githubusercontent.com/$($Config.GitHubRepo)/$($Config.GitHubBranch)/version.psd1"
         $content = (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 5).Content
-        if ($content -match 'Version\s*=\s*"([^"]+)"') {
+        if ($content -match "Version\s*=\s*['`"]([^'`"]+)['`"]") {
+            return $matches[1]
+        }
+
+        # Backward compatibility if version.psd1 is missing remotely
+        $legacyUrl = "https://raw.githubusercontent.com/$($Config.GitHubRepo)/$($Config.GitHubBranch)/Start-SystemOptimizer.ps1"
+        $legacyContent = (Invoke-WebRequest -Uri $legacyUrl -UseBasicParsing -TimeoutSec 5).Content
+        if ($legacyContent -match 'Version\s*=\s*"([^"]+)"') {
             return $matches[1]
         }
     } catch {
@@ -94,6 +139,43 @@ function Test-UpdateAvailable {
         }
     }
     return @{ Available = $false; Current = $Config.Version; Latest = $Config.Version }
+}
+
+function Invoke-TrustedGitHubRawDownload {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Url,
+        [Parameter(Mandatory)]
+        [string]$OutFile,
+        [int]$TimeoutSec = 30
+    )
+
+    $uri = [Uri]$Url
+    if ($uri.Scheme -ne "https") {
+        throw "Only HTTPS downloads are allowed: $Url"
+    }
+    if ($uri.Host -ne "raw.githubusercontent.com") {
+        throw "Only raw.githubusercontent.com is allowed for module/script downloads: $($uri.Host)"
+    }
+
+    $outDir = Split-Path -Parent $OutFile
+    if ($outDir -and -not (Test-Path $outDir)) {
+        New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+    }
+
+    Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -TimeoutSec $TimeoutSec -ErrorAction Stop
+    if (-not (Test-Path $OutFile)) {
+        throw "Expected file was not downloaded: $OutFile"
+    }
+}
+
+function Get-SystemOptimizerModuleList {
+    return @(
+        'Backup','Bloatware','Core','Drivers','Hardware','Help','ImageTool','Installer',
+        'Logging','Maintenance','Network','OneDrive','Power','Privacy','Profiles',
+        'Registry','Rollback','Security','Services','Shutdown','Software','Tasks',
+        'Telemetry','UITweaks','Utilities','VBS','VHDDeploy','Warning','WindowsUpdate'
+    )
 }
 
 function Update-SystemOptimizer {
@@ -120,13 +202,25 @@ function Update-SystemOptimizer {
         Write-Host "[*] Downloading System Optimizer v$($update.Latest)..." -ForegroundColor Yellow
         $scriptUrl = "https://raw.githubusercontent.com/$($Config.GitHubRepo)/$($Config.GitHubBranch)/Start-SystemOptimizer.ps1"
         $scriptPath = Join-Path $persistentPath "Start-SystemOptimizer.ps1"
+        $scriptTempPath = "$scriptPath.new"
         New-Item -ItemType Directory -Path $persistentPath -Force | Out-Null
-        Invoke-WebRequest -Uri $scriptUrl -OutFile $scriptPath -UseBasicParsing
+        Invoke-TrustedGitHubRawDownload -Url $scriptUrl -OutFile $scriptTempPath -TimeoutSec 60
+        Move-Item -Path $scriptTempPath -Destination $scriptPath -Force
         Write-Host "  [+] Main script updated" -ForegroundColor Green
+
+        $versionUrl = "https://raw.githubusercontent.com/$($Config.GitHubRepo)/$($Config.GitHubBranch)/version.psd1"
+        $versionPath = Join-Path $persistentPath "version.psd1"
+        $versionTempPath = "$versionPath.new"
+        Invoke-TrustedGitHubRawDownload -Url $versionUrl -OutFile $versionTempPath -TimeoutSec 30
+        Move-Item -Path $versionTempPath -Destination $versionPath -Force
+        Write-Host "  [+] Version metadata updated" -ForegroundColor Green
         
         # Download modules
         $modulesPath = Join-Path $persistentPath "modules"
-        Update-ModulesFromGitHub -TargetPath $modulesPath -Version $update.Latest | Out-Null
+        $updatedPath = Update-ModulesFromGitHub -TargetPath $modulesPath -Version $update.Latest
+        if (-not $updatedPath) {
+            throw "Module update failed. Existing modules were preserved."
+        }
         
         Write-Host ""
         Write-Host "[+] Update complete! Restart to use v$($update.Latest)" -ForegroundColor Green
@@ -306,35 +400,54 @@ function Update-ModulesFromGitHub {
         [string]$Version
     )
     
+    $moduleList = Get-SystemOptimizerModuleList
+    $stagingPath = "$TargetPath.new"
+    $backupPath = "$TargetPath.bak"
+
     try {
-        New-Item -ItemType Directory -Path $TargetPath -Force | Out-Null
-        
-        $moduleList = @('Backup','Bloatware','Core','Drivers','Hardware','Help','ImageTool','Installer',
-                       'Logging','Maintenance','Network','OneDrive','Power','Privacy','Profiles',
-                       'Registry','Rollback','Security','Services','Shutdown','Software','Tasks',
-                       'Telemetry','UITweaks','Utilities','VBS','VHDDeploy','Warning','WindowsUpdate')
-        
+        Remove-Item -Path $stagingPath -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path $stagingPath -Force | Out-Null
+
         Write-Host "[*] Downloading modules from GitHub (v$Version)..." -ForegroundColor Yellow
         $downloaded = 0
+        $failed = @()
         foreach ($mod in $moduleList) {
             try {
-                $url = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/modules/$mod.psm1"
-                $outPath = Join-Path $TargetPath "$mod.psm1"
-                Invoke-WebRequest -Uri $url -OutFile $outPath -UseBasicParsing -ErrorAction Stop
+                $url = "https://raw.githubusercontent.com/$($Config.GitHubRepo)/$($Config.GitHubBranch)/modules/$mod.psm1"
+                $outPath = Join-Path $stagingPath "$mod.psm1"
+                Invoke-TrustedGitHubRawDownload -Url $url -OutFile $outPath -TimeoutSec 30
                 $downloaded++
                 Write-Host "  [+] $mod" -ForegroundColor Green
             } catch {
+                $failed += $mod
                 Write-Host "  [-] $mod failed" -ForegroundColor Red
             }
         }
-        
-        # Save version file
-        $Version | Out-File (Join-Path $TargetPath ".version") -Force
-        
-        Write-Host "[+] Downloaded $downloaded/$($moduleList.Count) modules" -ForegroundColor Green
+
+        if ($failed.Count -gt 0 -or $downloaded -ne $moduleList.Count) {
+            throw "Downloaded $downloaded/$($moduleList.Count) modules. Failed: $($failed -join ', ')"
+        }
+
+        # Save version file in staging
+        $Version | Out-File (Join-Path $stagingPath ".version") -Force
+
+        # Atomic-ish swap with rollback
+        Remove-Item -Path $backupPath -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path $TargetPath) {
+            Rename-Item -Path $TargetPath -NewName (Split-Path $backupPath -Leaf) -ErrorAction Stop
+        }
+        Rename-Item -Path $stagingPath -NewName (Split-Path $TargetPath -Leaf) -ErrorAction Stop
+        Remove-Item -Path $backupPath -Recurse -Force -ErrorAction SilentlyContinue
+
+        Write-Host "[+] Downloaded and verified $downloaded/$($moduleList.Count) modules" -ForegroundColor Green
         $script:Config.ModulesDir = $TargetPath
         return $TargetPath
     } catch {
+        # Best-effort rollback
+        if (-not (Test-Path $TargetPath) -and (Test-Path $backupPath)) {
+            try { Rename-Item -Path $backupPath -NewName (Split-Path $TargetPath -Leaf) -ErrorAction Stop } catch { }
+        }
+        Remove-Item -Path $stagingPath -Recurse -Force -ErrorAction SilentlyContinue
         Write-Log "Failed to download modules: $($_.Exception.Message)" "ERROR"
         return $null
     }
@@ -582,9 +695,9 @@ function Invoke-OptFunction {
                 $response = Read-Host
                 if ($response -match '^[Yy]') {
                     try {
-                        $url = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/modules/$moduleName.psm1"
+                        $url = "https://raw.githubusercontent.com/$($Config.GitHubRepo)/$($Config.GitHubBranch)/modules/$moduleName.psm1"
                         Write-Log "Downloading $moduleName.psm1 from GitHub..." "INFO"
-                        Invoke-WebRequest -Uri $url -OutFile $modulePath -UseBasicParsing
+                        Invoke-TrustedGitHubRawDownload -Url $url -OutFile $modulePath -TimeoutSec 30
                         Import-Module $modulePath -Force -Global -DisableNameChecking
                         if (Get-Command $FunctionName -ErrorAction SilentlyContinue) {
                             Write-Log "Module downloaded and loaded successfully!" "SUCCESS"

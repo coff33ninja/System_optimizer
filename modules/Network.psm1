@@ -32,6 +32,7 @@
 #
 # ============================================================================
 
+# Version: 2.0.1
 function Set-NetworkOptimizations {
     Write-Log "APPLYING NETWORK OPTIMIZATIONS" "SECTION"
 

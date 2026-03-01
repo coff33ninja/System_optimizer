@@ -25,7 +25,7 @@ Dependencies:
     - Requires admin privileges for Wi-Fi password extraction
     - Logging module for Write-Log functionality
 
-Version: 1.0.0
+Version: 2.0.1
 #>
 
 function Get-WifiPasswords {

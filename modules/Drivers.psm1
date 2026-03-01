@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Drivers Module - System Optimizer
@@ -28,8 +28,92 @@ Backup Location:
 
 Requires Admin: Yes
 
-Version: 1.0.0
+Version: 2.0.1
 #>
+
+$script:VersionInfo = $null
+
+function Get-SystemOptimizerVersionInfo {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $candidates = @(
+        (Join-Path $repoRoot "version.psd1"),
+        (Join-Path (Get-Location) "version.psd1"),
+        "C:\System_Optimizer\version.psd1"
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            $data = Import-PowerShellDataFile -Path $candidate
+            if ($data.Version) {
+                $version = [string]$data.Version
+                $releaseTag = "v$version"
+                return @{
+                    Version = $version
+                    ReleaseTag = $releaseTag
+                }
+            }
+        } catch {
+            $null
+        }
+    }
+
+    return @{
+        Version = "2.0.1"
+        ReleaseTag = "v2.0.1"
+    }
+}
+
+$script:VersionInfo = Get-SystemOptimizerVersionInfo
+$script:PinnedReleaseTag = $script:VersionInfo.ReleaseTag
+$script:TrustedToolHashes = @{
+    "SNAPPY_DRIVER.zip" = "23C05D7B4ACD4F435EB7F0FBBA3BA97CBF4A21CF77DD8688FB33B82B5D101720"
+}
+
+function Test-TrustedFileHash {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+        [Parameter(Mandatory)]
+        [string]$ExpectedHash
+    )
+
+    if (-not (Test-Path $Path)) { return $false }
+    $actual = (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToUpper()
+    return ($actual -eq $ExpectedHash.ToUpper())
+}
+
+function Get-TrustedToolFile {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FileName,
+        [Parameter(Mandatory)]
+        [string]$DestinationPath
+    )
+
+    $expectedHash = $script:TrustedToolHashes[$FileName]
+    if (-not $expectedHash) {
+        throw "No trusted hash configured for $FileName"
+    }
+
+    $moduleParent = Split-Path -Parent $PSScriptRoot
+    $bundledPath = Join-Path $moduleParent "tools\$FileName"
+    if (Test-Path $bundledPath) {
+        Copy-Item -Path $bundledPath -Destination $DestinationPath -Force
+        if (Test-TrustedFileHash -Path $DestinationPath -ExpectedHash $expectedHash) {
+            return $DestinationPath
+        }
+        throw "Bundled tool hash mismatch for $FileName"
+    }
+
+    $releaseUrl = "https://github.com/coff33ninja/System_optimizer/releases/download/$($script:PinnedReleaseTag)/$FileName"
+    Invoke-WebRequest -Uri $releaseUrl -OutFile $DestinationPath -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
+    if (Test-TrustedFileHash -Path $DestinationPath -ExpectedHash $expectedHash) {
+        return $DestinationPath
+    }
+    Remove-Item -Path $DestinationPath -Force -ErrorAction SilentlyContinue
+    throw "Downloaded tool hash mismatch for $FileName"
+}
 
 function Start-SnappyDriverInstaller {
     $BaseDir = "C:\System_Optimizer\SDI"
@@ -98,13 +182,12 @@ function Start-SnappyDriverInstaller {
         "3" {
             # NexTool method - download from AIO repo with auto-update flags
             try {
-                Write-Log "Downloading Snappy Driver Installer..."
-                $sdiUrl = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/tools/SNAPPY_DRIVER.zip"
+                Write-Log "Preparing trusted Snappy Driver Installer package..."
                 $zipPath = "$BaseDir\SNAPPY_DRIVER.zip"
                 $extractPath = "$BaseDir\SNAPPY_DRIVER"
 
-                Invoke-WebRequest -Uri $sdiUrl -OutFile $zipPath -UseBasicParsing
-                Write-Log "Downloaded SDI" "SUCCESS"
+                Get-TrustedToolFile -FileName "SNAPPY_DRIVER.zip" -DestinationPath $zipPath | Out-Null
+                Write-Log "Trusted SDI package ready (hash verified)" "SUCCESS"
 
                 Write-Log "Extracting..."
                 if (-not (Test-Path $extractPath)) { New-Item -ItemType Directory -Path $extractPath -Force | Out-Null }

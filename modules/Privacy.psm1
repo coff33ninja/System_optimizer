@@ -23,8 +23,80 @@ Additional Tweaks:
 
 Requires Admin: Yes
 
-Version: 1.0.0
+Version: 2.0.1
 #>
+
+$script:VersionInfo = $null
+
+function Get-SystemOptimizerVersionInfo {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $candidates = @(
+        (Join-Path $repoRoot "version.psd1"),
+        (Join-Path (Get-Location) "version.psd1"),
+        "C:\System_Optimizer\version.psd1"
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            $data = Import-PowerShellDataFile -Path $candidate
+            if ($data.Version) {
+                $version = [string]$data.Version
+                $releaseTag = "v$version"
+                return @{
+                    Version = $version
+                    ReleaseTag = $releaseTag
+                }
+            }
+        } catch {
+            $null
+        }
+    }
+
+    return @{
+        Version = "2.0.1"
+        ReleaseTag = "v2.0.1"
+    }
+}
+
+$script:VersionInfo = Get-SystemOptimizerVersionInfo
+$script:PinnedReleaseTag = $script:VersionInfo.ReleaseTag
+$script:TrustedConfigFiles = @{
+    "ooshutup10.cfg"      = "ooshutup10.cfg"
+    "block-telemetry.ps1" = "block-telemetry.ps1"
+    "DEBLOATER.ps1"       = "DEBLOATER.ps1"
+}
+
+function Get-TrustedConfigFile {
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("ooshutup10.cfg", "block-telemetry.ps1", "DEBLOATER.ps1")]
+        [string]$FileName,
+        [Parameter(Mandatory)]
+        [string]$DestinationPath
+    )
+
+    $relativePath = $script:TrustedConfigFiles[$FileName]
+    if (-not $relativePath) {
+        throw "Config file is not trusted: $FileName"
+    }
+
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $localPath = Join-Path $repoRoot "configs\$relativePath"
+    if (Test-Path $localPath) {
+        Copy-Item -Path $localPath -Destination $DestinationPath -Force
+        return $DestinationPath
+    }
+
+    $downloadUrl = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/$($script:PinnedReleaseTag)/configs/$relativePath"
+    $uri = [Uri]$downloadUrl
+    if ($uri.Scheme -ne "https" -or $uri.Host -ne "raw.githubusercontent.com") {
+        throw "Blocked untrusted config download URL: $downloadUrl"
+    }
+
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $DestinationPath -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
+    return $DestinationPath
+}
 
 function Start-OOShutUp10 {
     Set-ConsoleSize
@@ -61,8 +133,7 @@ function Start-OOShutUp10 {
 
                 # Download recommended config
                 Write-Log "Downloading recommended config..."
-                $cfgUrl = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/configs/ooshutup10.cfg"
-                Invoke-WebRequest -Uri $cfgUrl -OutFile $cfgPath -UseBasicParsing
+                Get-TrustedConfigFile -FileName "ooshutup10.cfg" -DestinationPath $cfgPath | Out-Null
                 Write-Log "Downloaded config" "SUCCESS"
 
                 # Run with config
@@ -130,7 +201,7 @@ function Start-AdvancedDebloat {
             Write-Log "Downloading and running Block Telemetry script..."
             $scriptPath = "$BaseDir\block-telemetry.ps1"
             try {
-                Invoke-WebRequest -Uri "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/configs/block-telemetry.ps1" -OutFile $scriptPath -UseBasicParsing
+                Get-TrustedConfigFile -FileName "block-telemetry.ps1" -DestinationPath $scriptPath | Out-Null
                 Write-Log "Downloaded block-telemetry.ps1" "SUCCESS"
 
                 Write-Host ""
@@ -155,7 +226,7 @@ function Start-AdvancedDebloat {
             Write-Log "Downloading and running Debloater script..."
             $scriptPath = "$BaseDir\DEBLOATER.ps1"
             try {
-                Invoke-WebRequest -Uri "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/configs/DEBLOATER.ps1" -OutFile $scriptPath -UseBasicParsing
+                Get-TrustedConfigFile -FileName "DEBLOATER.ps1" -DestinationPath $scriptPath | Out-Null
                 Write-Log "Downloaded DEBLOATER.ps1" "SUCCESS"
 
                 Write-Host ""
@@ -187,8 +258,8 @@ function Start-AdvancedDebloat {
 
             try {
                 # Download both
-                Invoke-WebRequest -Uri "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/configs/block-telemetry.ps1" -OutFile $telemetryPath -UseBasicParsing
-                Invoke-WebRequest -Uri "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/configs/DEBLOATER.ps1" -OutFile $debloatPath -UseBasicParsing
+                Get-TrustedConfigFile -FileName "block-telemetry.ps1" -DestinationPath $telemetryPath | Out-Null
+                Get-TrustedConfigFile -FileName "DEBLOATER.ps1" -DestinationPath $debloatPath | Out-Null
                 Write-Log "Downloaded both scripts" "SUCCESS"
 
                 Write-Host ""

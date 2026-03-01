@@ -32,13 +32,62 @@ Integration:
 
 Requires Admin: No
 
-Version: 1.0.0
+Version: 2.0.1
 #>
 
 # Cache for parsed menu data
 $script:MenuCache = $null
 $script:FeaturesPath = $null
-$script:GitHubRawUrl = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/docs/FEATURES.md"
+$script:VersionInfo = $null
+
+function Get-SystemOptimizerVersionInfo {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $candidates = @(
+        (Join-Path $repoRoot "version.psd1"),
+        (Join-Path (Get-Location) "version.psd1"),
+        "C:\System_Optimizer\version.psd1"
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            $data = Import-PowerShellDataFile -Path $candidate
+            if ($data.Version) {
+                $version = [string]$data.Version
+                $releaseTag = "v$version"
+                return @{
+                    Version = $version
+                    ReleaseTag = $releaseTag
+                }
+            }
+        } catch {
+            $null
+        }
+    }
+
+    return @{
+        Version = "2.0.1"
+        ReleaseTag = "v2.0.1"
+    }
+}
+
+$script:VersionInfo = Get-SystemOptimizerVersionInfo
+$script:PinnedReleaseTag = $script:VersionInfo.ReleaseTag
+$script:GitHubRawUrl = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/$($script:PinnedReleaseTag)/docs/FEATURES.md"
+
+function Invoke-TrustedFeaturesDownload {
+    param(
+        [Parameter(Mandatory)]
+        [string]$DestinationPath
+    )
+
+    $uri = [Uri]$script:GitHubRawUrl
+    if ($uri.Scheme -ne "https" -or $uri.Host -ne "raw.githubusercontent.com") {
+        throw "Blocked untrusted FEATURES source: $($script:GitHubRawUrl)"
+    }
+
+    Invoke-WebRequest -Uri $script:GitHubRawUrl -OutFile $DestinationPath -TimeoutSec 20 -UseBasicParsing -ErrorAction Stop
+}
 
 function Find-FeaturesFile {
     <#
@@ -70,8 +119,8 @@ function Find-FeaturesFile {
             New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
         }
         
-        # Download FEATURES.md from GitHub
-        Invoke-WebRequest -Uri $script:GitHubRawUrl -OutFile $tempFile -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop
+        # Download FEATURES.md from pinned GitHub release branch/tag
+        Invoke-TrustedFeaturesDownload -DestinationPath $tempFile
         
         if (Test-Path $tempFile) {
             return $tempFile
@@ -198,7 +247,7 @@ function Show-MenuHelp {
             Write-Host "  To access help:" -ForegroundColor Gray
             Write-Host "    1. Download the full repository from GitHub" -ForegroundColor Gray
             Write-Host "    2. Or view online:" -ForegroundColor Gray
-            Write-Host "       https://github.com/coff33ninja/System_Optimizer/blob/main/docs/FEATURES.md" -ForegroundColor Cyan
+            Write-Host "       https://github.com/coff33ninja/System_Optimizer/blob/$($script:PinnedReleaseTag)/docs/FEATURES.md" -ForegroundColor Cyan
         } else {
             Write-Host "  Enter a menu number to view detailed description." -ForegroundColor Gray
             Write-Host ""
@@ -298,8 +347,12 @@ function Show-ComprehensiveHelp {
     #>
     [CmdletBinding()]
     param(
-        [string]$Version = "1.0.0"
+        [string]$Version = $null
     )
+
+    if ([string]::IsNullOrWhiteSpace($Version)) {
+        $Version = $script:VersionInfo.Version
+    }
     
     Write-Host @"
 

@@ -16,7 +16,8 @@ jobs:
         shell: pwsh
         run: |
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
-          $results = Invoke-ScriptAnalyzer -Path ./modules -Recurse -Severity Error,Warning
+          $settingsPath = Join-Path $PWD "PSScriptAnalyzerSettings.psd1"
+          $results = Invoke-ScriptAnalyzer -Path ./modules -Recurse -Settings $settingsPath -Severity Error,Warning
           if ($results) {
             $results | Format-Table -AutoSize
             Write-Host "Found $($results.Count) issues"

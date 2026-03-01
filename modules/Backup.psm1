@@ -33,7 +33,7 @@ Backup Location:
 
 Requires Admin: No
 
-Version: 1.0.0
+Version: 2.0.1
 #>
 # ============================================================================
 
@@ -41,6 +41,35 @@ Version: 1.0.0
 # Import logging and progress functions if available
 $script:HasWriteLog = Get-Command Write-Log -ErrorAction SilentlyContinue
 $script:HasProgress = Get-Command Start-ProgressOperation -ErrorAction SilentlyContinue
+$script:SystemOptimizerVersion = $null
+
+function Get-SystemOptimizerVersion {
+    if ($script:SystemOptimizerVersion) {
+        return $script:SystemOptimizerVersion
+    }
+
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $candidates = @(
+        (Join-Path $repoRoot "version.psd1"),
+        (Join-Path (Get-Location) "version.psd1"),
+        "C:\System_Optimizer\version.psd1"
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            $data = Import-PowerShellDataFile -Path $candidate
+            if ($data.Version) {
+                $script:SystemOptimizerVersion = [string]$data.Version
+                return $script:SystemOptimizerVersion
+            }
+        } catch {
+            $null
+        }
+    }
+    $script:SystemOptimizerVersion = "2.0.1"
+    return $script:SystemOptimizerVersion
+}
 
 # Fallback Write-Log if not available from Logging module
 if (-not $script:HasWriteLog) {
@@ -895,7 +924,7 @@ function Start-UserProfileBackup {
         SystemInfo = @{
             OSVersion = (Get-CimInstance Win32_OperatingSystem).Caption
             PowerShellVersion = $PSVersionTable.PSVersion.ToString()
-            SystemOptimizerVersion = "2.1.0"
+            SystemOptimizerVersion = Get-SystemOptimizerVersion
         }
         BackupStats = @{
             TotalFolders = $totalFolders
@@ -1493,5 +1522,6 @@ Export-ModuleMember -Function @(
     'Backup-OutlookPSTFiles',
     'Show-BackupStatus'
 )
+
 
 

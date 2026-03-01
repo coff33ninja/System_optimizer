@@ -36,7 +36,7 @@ Work Directory:
 
 Requires Admin: Yes
 
-Version: 1.0.0
+Version: 2.0.1
 #>
 # ============================================================================
 # WARNING: This script will ERASE data on selected disks!
@@ -44,7 +44,45 @@ Version: 1.0.0
 # ============================================================================
 
 
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Continue'
+$script:VersionInfo = $null
+
+function Get-SystemOptimizerVersionInfo {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $candidates = @(
+        (Join-Path $repoRoot "version.psd1"),
+        (Join-Path (Get-Location) "version.psd1"),
+        "C:\System_Optimizer\version.psd1"
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            $data = Import-PowerShellDataFile -Path $candidate
+            if ($data.Version) {
+                $version = [string]$data.Version
+                $releaseTag = "v$version"
+                return @{
+                    Version = $version
+                    ReleaseTag = $releaseTag
+                }
+            }
+        } catch {
+            $null
+        }
+    }
+
+    return @{
+        Version = "2.0.1"
+        ReleaseTag = "v2.0.1"
+    }
+}
+
+$script:VersionInfo = Get-SystemOptimizerVersionInfo
+$script:PinnedReleaseTag = $script:VersionInfo.ReleaseTag
+$script:TrustedToolHashes = @{
+    "WinNTSetup.zip" = "B2918D04BDC71CF9ECD14F0FB3CF65686043DF7A1D806629351C0874D197FEFC"
+}
 $script:WorkDir = "C:\System_Optimizer\Installer"
 $script:DiskpartDir = "$WorkDir\Diskpart"
 $script:LogDir = "C:\System_Optimizer\Logs"
@@ -111,7 +149,7 @@ function Set-ConsoleSize {
             $windowSize.Height = $Height
             $Host.UI.RawUI.WindowSize = $windowSize
         }
-    } catch { }
+    } catch { $null }
 }
 
 function Initialize-InstallerDirectories {
@@ -172,6 +210,117 @@ function Show-AvailableDisks {
     Write-Host ""
 }
 
+function Read-InstallerDiskNumber {
+    param([string]$Prompt)
+
+    $value = Read-Host $Prompt
+    $diskNum = 0
+    if (-not [int]::TryParse($value, [ref]$diskNum) -or $diskNum -lt 0) {
+        Write-InstallerLog "Invalid disk number input: $value" "ERROR"
+        return $null
+    }
+
+    $disk = Get-Disk -Number $diskNum -ErrorAction SilentlyContinue
+    if (-not $disk) {
+        Write-InstallerLog "Disk $diskNum not found" "ERROR"
+        return $null
+    }
+
+    return $diskNum
+}
+
+function Read-InstallerImageIndex {
+    param(
+        [Parameter(Mandatory)]
+        [object[]]$Images,
+        [string]$Prompt = "Select edition index"
+    )
+
+    $value = Read-Host $Prompt
+    $index = 0
+    if (-not [int]::TryParse($value, [ref]$index) -or $index -lt 1) {
+        Write-InstallerLog "Invalid image index input: $value" "ERROR"
+        return $null
+    }
+
+    $validIndexes = $Images | ForEach-Object { [int]$_.ImageIndex }
+    if ($index -notin $validIndexes) {
+        Write-InstallerLog "Image index $index is not available in selected image" "ERROR"
+        return $null
+    }
+
+    return $index
+}
+
+function Get-SystemOptimizerBootstrapCommand {
+    return '$file = Join-Path $env:TEMP ''SystemOptimizer.exe''; Invoke-WebRequest -Uri ''https://github.com/coff33ninja/System_optimizer/releases/latest/download/SystemOptimizer.exe'' -OutFile $file -UseBasicParsing -TimeoutSec 120; Start-Process -FilePath $file -Verb RunAs'
+}
+
+function Test-TrustedFileHash {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+        [Parameter(Mandatory)]
+        [string]$ExpectedHash
+    )
+
+    if (-not (Test-Path $Path)) { return $false }
+    $actual = (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToUpper()
+    return ($actual -eq $ExpectedHash.ToUpper())
+}
+
+function Get-TrustedToolFile {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FileName,
+        [Parameter(Mandatory)]
+        [string]$DestinationPath
+    )
+
+    $expectedHash = $script:TrustedToolHashes[$FileName]
+    if (-not $expectedHash) {
+        throw "No trusted hash configured for $FileName"
+    }
+
+    $moduleParent = Split-Path -Parent $PSScriptRoot
+    $bundledPath = Join-Path $moduleParent "tools\$FileName"
+    if (Test-Path $bundledPath) {
+        Copy-Item -Path $bundledPath -Destination $DestinationPath -Force
+        if (Test-TrustedFileHash -Path $DestinationPath -ExpectedHash $expectedHash) {
+            return $DestinationPath
+        }
+        throw "Bundled tool hash mismatch for $FileName"
+    }
+
+    $releaseUrl = "https://github.com/coff33ninja/System_optimizer/releases/download/$($script:PinnedReleaseTag)/$FileName"
+    Invoke-WebRequest -Uri $releaseUrl -OutFile $DestinationPath -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
+    if (Test-TrustedFileHash -Path $DestinationPath -ExpectedHash $expectedHash) {
+        return $DestinationPath
+    }
+
+    Remove-Item -Path $DestinationPath -Force -ErrorAction SilentlyContinue
+    throw "Downloaded tool hash mismatch for $FileName"
+}
+
+function Confirm-InstallerAction {
+    param(
+        [Parameter(Mandatory)]
+        [string]$WarningText,
+        [Parameter(Mandatory)]
+        [string]$ConfirmationText
+    )
+
+    Write-Host ""
+    Write-Host "  WARNING: $WarningText" -ForegroundColor Red
+    Write-Host "  Type '$ConfirmationText' to continue." -ForegroundColor Yellow
+    $confirm = Read-Host "Confirmation"
+    if ($confirm -cne $ConfirmationText) {
+        Write-InstallerLog "Operation cancelled by user" "WARNING"
+        return $false
+    }
+    return $true
+}
+
 function Show-DiskPartitions {
     Write-InstallerLog "DISK PARTITIONS" "SECTION"
 
@@ -202,7 +351,7 @@ function Show-DiskPartitions {
 # ============================================================================
 # DISKPART SCRIPT GENERATION
 # ============================================================================
-function Create-SingleDiskScript {
+function New-SingleDiskScript {
     param([int]$DiskNumber = 0)
 
     $script = @"
@@ -246,7 +395,7 @@ exit
     return $script
 }
 
-function Create-DualDiskPrimaryScript {
+function New-DualDiskPrimaryScript {
     param([int]$PrimaryDisk = 0, [int]$SecondaryDisk = 1)
 
     $script = @"
@@ -298,7 +447,7 @@ exit
     return $script
 }
 
-function Create-DualDiskSecondaryScript {
+function New-DualDiskSecondaryScript {
     param([int]$PrimaryDisk = 0, [int]$SecondaryDisk = 1)
 
     $script = @"
@@ -354,26 +503,21 @@ exit
 # ============================================================================
 # DISK PREPARATION FUNCTIONS
 # ============================================================================
-function Prepare-SingleDisk {
+function Initialize-SingleDisk {
     Write-InstallerLog "PREPARE SINGLE DISK (GPT/UEFI)" "SECTION"
 
     Show-AvailableDisks
 
-    $diskNum = Read-Host "Enter disk number to prepare (WARNING: ALL DATA WILL BE ERASED)"
+    $diskNum = Read-InstallerDiskNumber "Enter disk number to prepare (WARNING: ALL DATA WILL BE ERASED)"
+    if ($null -eq $diskNum) { return $false }
 
-    # Confirm
-    Write-Host ""
-    Write-Host "  WARNING: This will ERASE ALL DATA on Disk $diskNum!" -ForegroundColor Red
-    Write-Host ""
-    $confirm = Read-Host "Type 'YES' to confirm"
-
-    if ($confirm -ne "YES") {
-        Write-InstallerLog "Operation cancelled" "WARNING"
+    $confirmationText = "ERASE DISK $diskNum"
+    if (-not (Confirm-InstallerAction -WarningText "This will erase all data on Disk $diskNum." -ConfirmationText $confirmationText)) {
         return $false
     }
 
     # Generate and save diskpart script
-    $script = Create-SingleDiskScript -DiskNumber $diskNum
+    $script = New-SingleDiskScript -DiskNumber $diskNum
     $scriptPath = "$DiskpartDir\SingleDisk.txt"
     $script | Out-File -FilePath $scriptPath -Encoding ASCII -Force
 
@@ -394,25 +538,25 @@ function Prepare-SingleDisk {
     }
 }
 
-function Prepare-DualDiskPrimary {
+function Initialize-DualDiskPrimary {
     Write-InstallerLog "PREPARE DUAL DISK - WINDOWS ON PRIMARY" "SECTION"
 
     Show-AvailableDisks
 
-    $primaryDisk = Read-Host "Enter PRIMARY disk number (for Windows)"
-    $secondaryDisk = Read-Host "Enter SECONDARY disk number (for Data)"
-
-    Write-Host ""
-    Write-Host "  WARNING: This will ERASE ALL DATA on Disk $primaryDisk AND Disk $secondaryDisk!" -ForegroundColor Red
-    Write-Host ""
-    $confirm = Read-Host "Type 'YES' to confirm"
-
-    if ($confirm -ne "YES") {
-        Write-InstallerLog "Operation cancelled" "WARNING"
+    $primaryDisk = Read-InstallerDiskNumber "Enter PRIMARY disk number (for Windows)"
+    $secondaryDisk = Read-InstallerDiskNumber "Enter SECONDARY disk number (for Data)"
+    if ($null -eq $primaryDisk -or $null -eq $secondaryDisk) { return $false }
+    if ($primaryDisk -eq $secondaryDisk) {
+        Write-InstallerLog "Primary and secondary disks must be different" "ERROR"
         return $false
     }
 
-    $script = Create-DualDiskPrimaryScript -PrimaryDisk $primaryDisk -SecondaryDisk $secondaryDisk
+    $confirmationText = "ERASE DISKS $primaryDisk,$secondaryDisk"
+    if (-not (Confirm-InstallerAction -WarningText "This will erase all data on Disk $primaryDisk and Disk $secondaryDisk." -ConfirmationText $confirmationText)) {
+        return $false
+    }
+
+    $script = New-DualDiskPrimaryScript -PrimaryDisk $primaryDisk -SecondaryDisk $secondaryDisk
     $scriptPath = "$DiskpartDir\DualDisk.txt"
     $script | Out-File -FilePath $scriptPath -Encoding ASCII -Force
 
@@ -428,25 +572,25 @@ function Prepare-DualDiskPrimary {
     }
 }
 
-function Prepare-DualDiskSecondary {
+function Initialize-DualDiskSecondary {
     Write-InstallerLog "PREPARE DUAL DISK - WINDOWS ON SECONDARY" "SECTION"
 
     Show-AvailableDisks
 
-    $primaryDisk = Read-Host "Enter PRIMARY disk number (for Data)"
-    $secondaryDisk = Read-Host "Enter SECONDARY disk number (for Windows)"
-
-    Write-Host ""
-    Write-Host "  WARNING: This will ERASE ALL DATA on Disk $primaryDisk AND Disk $secondaryDisk!" -ForegroundColor Red
-    Write-Host ""
-    $confirm = Read-Host "Type 'YES' to confirm"
-
-    if ($confirm -ne "YES") {
-        Write-InstallerLog "Operation cancelled" "WARNING"
+    $primaryDisk = Read-InstallerDiskNumber "Enter PRIMARY disk number (for Data)"
+    $secondaryDisk = Read-InstallerDiskNumber "Enter SECONDARY disk number (for Windows)"
+    if ($null -eq $primaryDisk -or $null -eq $secondaryDisk) { return $false }
+    if ($primaryDisk -eq $secondaryDisk) {
+        Write-InstallerLog "Primary and secondary disks must be different" "ERROR"
         return $false
     }
 
-    $script = Create-DualDiskSecondaryScript -PrimaryDisk $primaryDisk -SecondaryDisk $secondaryDisk
+    $confirmationText = "ERASE DISKS $primaryDisk,$secondaryDisk"
+    if (-not (Confirm-InstallerAction -WarningText "This will erase all data on Disk $primaryDisk and Disk $secondaryDisk." -ConfirmationText $confirmationText)) {
+        return $false
+    }
+
+    $script = New-DualDiskSecondaryScript -PrimaryDisk $primaryDisk -SecondaryDisk $secondaryDisk
     $scriptPath = "$DiskpartDir\DualDisk.txt"
     $script | Out-File -FilePath $scriptPath -Encoding ASCII -Force
 
@@ -462,7 +606,7 @@ function Prepare-DualDiskSecondary {
     }
 }
 
-function Prepare-CustomDisk {
+function Initialize-CustomDisk {
     Write-InstallerLog "CUSTOM DISK PREPARATION" "SECTION"
 
     Show-AvailableDisks
@@ -477,14 +621,11 @@ function Prepare-CustomDisk {
     $style = Read-Host "Select partition style"
     if ($style -eq "0") { return $false }
 
-    $diskNum = Read-Host "Enter disk number"
+    $diskNum = Read-InstallerDiskNumber "Enter disk number"
+    if ($null -eq $diskNum) { return $false }
 
-    Write-Host ""
-    Write-Host "  WARNING: This will ERASE ALL DATA on Disk $diskNum!" -ForegroundColor Red
-    $confirm = Read-Host "Type 'YES' to confirm"
-
-    if ($confirm -ne "YES") {
-        Write-InstallerLog "Operation cancelled" "WARNING"
+    $confirmationText = "ERASE DISK $diskNum"
+    if (-not (Confirm-InstallerAction -WarningText "This will erase all data on Disk $diskNum." -ConfirmationText $confirmationText)) {
         return $false
     }
 
@@ -628,14 +769,15 @@ function Deploy-Windows {
     }
     Write-Host ""
 
-    $index = Read-Host "Select edition index"
+    $index = Read-InstallerImageIndex -Images $images -Prompt "Select edition index"
+    if ($null -eq $index) { return }
 
     # Apply image
     Write-InstallerLog "Applying Windows image to W: drive..."
     Write-Host "This may take 10-20 minutes..." -ForegroundColor Yellow
 
     try {
-        $result = Expand-WindowsImage -ImagePath $wimPath -Index $index -ApplyPath "W:\" -ErrorAction Stop
+        Expand-WindowsImage -ImagePath $wimPath -Index $index -ApplyPath "W:\" -ErrorAction Stop
         Write-InstallerLog "Windows image applied successfully" "SUCCESS"
     } catch {
         Write-InstallerLog "PowerShell method failed, trying DISM..." "WARNING"
@@ -668,11 +810,13 @@ function Deploy-Windows {
 
     # Create .lnk shortcut using VBScript
     try {
+        $bootstrapCmd = Get-SystemOptimizerBootstrapCommand
+        $escapedBootstrap = $bootstrapCmd.Replace('"', '""')
         $vbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
 Set shortcut = WshShell.CreateShortcut("$defaultDesktop\System Optimizer.lnk")
 shortcut.TargetPath = "powershell.exe"
-shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
+shortcut.Arguments = "-ExecutionPolicy Bypass -Command ""$escapedBootstrap"""
 shortcut.Description = "System Optimizer - Windows Optimization Toolkit"
 shortcut.WorkingDirectory = "%USERPROFILE%"
 shortcut.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
@@ -680,7 +824,7 @@ shortcut.Save
 
 Set shortcut2 = WshShell.CreateShortcut("$publicDesktop\System Optimizer.lnk")
 shortcut2.TargetPath = "powershell.exe"
-shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""irm 'https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat' -OutFile """"%TEMP%\SystemOptimizer.bat""""; & """"%TEMP%\SystemOptimizer.bat"""""""
+shortcut2.Arguments = "-ExecutionPolicy Bypass -Command ""$escapedBootstrap"""
 shortcut2.Description = "System Optimizer - Windows Optimization Toolkit"
 shortcut2.WorkingDirectory = "%USERPROFILE%"
 shortcut2.IconLocation = "%SystemRoot%\System32\shell32.dll,14"
@@ -724,7 +868,8 @@ function Start-QuickInstall {
 
     Show-AvailableDisks
 
-    $diskNum = Read-Host "Enter disk number for Windows installation"
+    $diskNum = Read-InstallerDiskNumber "Enter disk number for Windows installation"
+    if ($null -eq $diskNum) { return }
 
     Write-Host ""
     Write-Host "  Disk $diskNum will be:" -ForegroundColor Yellow
@@ -734,9 +879,8 @@ function Start-QuickInstall {
     Write-Host "    - Windows will be installed" -ForegroundColor Gray
     Write-Host ""
 
-    $confirm = Read-Host "Type 'YES' to proceed"
-    if ($confirm -ne "YES") {
-        Write-InstallerLog "Operation cancelled" "WARNING"
+    $confirmationText = "QUICK INSTALL DISK $diskNum"
+    if (-not (Confirm-InstallerAction -WarningText "Quick install will erase Disk $diskNum and deploy Windows." -ConfirmationText $confirmationText)) {
         return
     }
 
@@ -744,7 +888,7 @@ function Start-QuickInstall {
     Write-Host ""
     Write-Host "Step 1: Preparing disk..." -ForegroundColor Yellow
 
-    $script = Create-SingleDiskScript -DiskNumber $diskNum
+    $script = New-SingleDiskScript -DiskNumber $diskNum
     $scriptPath = "$DiskpartDir\QuickInstall.txt"
     $script | Out-File -FilePath $scriptPath -Encoding ASCII -Force
 
@@ -765,20 +909,19 @@ function Start-QuickInstall {
 # ============================================================================
 # WINNTSETUP DOWNLOAD
 # ============================================================================
-function Download-WinNTSetup {
+function Get-WinNTSetup {
     Set-ConsoleSize
     Clear-Host
     Write-InstallerLog "DOWNLOAD WINNTSETUP" "SECTION"
 
     $setupDir = "$WorkDir\WinNTSetup"
-    $zipUrl = "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/tools/WinNTSetup.zip"
     $zipPath = "$WorkDir\WinNTSetup.zip"
 
     Write-Host ""
     Write-Host "  WinNTSetup is a GUI tool for installing Windows." -ForegroundColor Cyan
     Write-Host "  It provides more options than the built-in installer." -ForegroundColor Gray
     Write-Host ""
-    Write-Host "  [1] Download from System Optimizer repo (v4.6.2)"
+    Write-Host "  [1] Download trusted WinNTSetup package ($($script:PinnedReleaseTag))"
     Write-Host "  [2] Launch WinNTSetup (if already downloaded)"
     Write-Host "  [0] Cancel"
     Write-Host ""
@@ -787,21 +930,20 @@ function Download-WinNTSetup {
 
     switch ($choice) {
         "1" {
-            Write-InstallerLog "Downloading WinNTSetup from System Optimizer repo..."
+            Write-InstallerLog "Preparing trusted WinNTSetup package..."
             try {
                 # Create directory
                 if (-not (Test-Path $setupDir)) {
                     New-Item -ItemType Directory -Path $setupDir -Force | Out-Null
                 }
 
-                # Download zip
-                Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+                Get-TrustedToolFile -FileName "WinNTSetup.zip" -DestinationPath $zipPath | Out-Null
 
                 # Extract
                 Expand-Archive -Path $zipPath -DestinationPath $setupDir -Force
                 Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
 
-                Write-InstallerLog "WinNTSetup downloaded to $setupDir" "SUCCESS"
+                Write-InstallerLog "Trusted WinNTSetup extracted to $setupDir" "SUCCESS"
 
                 # Launch it
                 $exePath = "$setupDir\WinNTSetup_x64.exe"
@@ -812,7 +954,7 @@ function Download-WinNTSetup {
             } catch {
                 Write-InstallerLog "Download failed: $_" "ERROR"
                 Write-Host ""
-                Write-Host "  Manual download: https://github.com/coff33ninja/System_Optimizer/tree/main/tools/WinNTSetup" -ForegroundColor Yellow
+                Write-Host "  Manual download: https://github.com/coff33ninja/System_optimizer/releases/download/$($script:PinnedReleaseTag)/WinNTSetup.zip" -ForegroundColor Yellow
             }
         }
         "2" {
@@ -838,15 +980,15 @@ function Start-InstallerMenu {
         $choice = Read-Host "Select option"
 
         switch ($choice) {
-            "1" { Prepare-SingleDisk }
-            "2" { Prepare-DualDiskPrimary }
-            "3" { Prepare-DualDiskSecondary }
-            "4" { Prepare-CustomDisk }
+            "1" { Initialize-SingleDisk }
+            "2" { Initialize-DualDiskPrimary }
+            "3" { Initialize-DualDiskSecondary }
+            "4" { Initialize-CustomDisk }
             "5" { Deploy-Windows }
             "6" { Start-QuickInstall }
             "7" { Show-AvailableDisks }
             "8" { Show-DiskPartitions }
-            "9" { Download-WinNTSetup }
+            "9" { Get-WinNTSetup }
             "0" { return }
             default { Write-Host "Invalid option" -ForegroundColor Red }
         }
@@ -858,6 +1000,16 @@ function Start-InstallerMenu {
         }
     } while ($true)
 }
+
+# Backward-compatible aliases for legacy function names
+Set-Alias -Name Create-SingleDiskScript -Value New-SingleDiskScript -Scope Script
+Set-Alias -Name Create-DualDiskPrimaryScript -Value New-DualDiskPrimaryScript -Scope Script
+Set-Alias -Name Create-DualDiskSecondaryScript -Value New-DualDiskSecondaryScript -Scope Script
+Set-Alias -Name Prepare-SingleDisk -Value Initialize-SingleDisk -Scope Script
+Set-Alias -Name Prepare-DualDiskPrimary -Value Initialize-DualDiskPrimary -Scope Script
+Set-Alias -Name Prepare-DualDiskSecondary -Value Initialize-DualDiskSecondary -Scope Script
+Set-Alias -Name Prepare-CustomDisk -Value Initialize-CustomDisk -Scope Script
+Set-Alias -Name Download-WinNTSetup -Value Get-WinNTSetup -Scope Script
 
 # ============================================================================
 # ============================================================================
@@ -871,6 +1023,18 @@ Export-ModuleMember -Function @(
     'Show-InstallerMenu',
     'Show-AvailableDisks',
     'Show-DiskPartitions',
+    'New-SingleDiskScript',
+    'New-DualDiskPrimaryScript',
+    'New-DualDiskSecondaryScript',
+    'Initialize-SingleDisk',
+    'Initialize-DualDiskPrimary',
+    'Initialize-DualDiskSecondary',
+    'Initialize-CustomDisk',
+    'Deploy-Windows',
+    'Start-QuickInstall',
+    'Get-WinNTSetup',
+    'Start-InstallerMenu'
+) -Alias @(
     'Create-SingleDiskScript',
     'Create-DualDiskPrimaryScript',
     'Create-DualDiskSecondaryScript',
@@ -878,8 +1042,6 @@ Export-ModuleMember -Function @(
     'Prepare-DualDiskPrimary',
     'Prepare-DualDiskSecondary',
     'Prepare-CustomDisk',
-    'Deploy-Windows',
-    'Start-QuickInstall',
-    'Download-WinNTSetup',
-    'Start-InstallerMenu'
+    'Download-WinNTSetup'
 )
+
