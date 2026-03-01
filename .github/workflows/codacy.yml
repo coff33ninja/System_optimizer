@@ -1,0 +1,14 @@
+name: Legacy Codacy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep historical reference
+        run: echo "Retained to satisfy historical code scanning references."
