@@ -192,6 +192,8 @@ function Show-FirstRunWarning {
     Write-Host ""
     
     $normalizedResponse = if ($null -ne $response) { $response.Trim() } else { "" }
+    # Allow common trailing punctuation in interactive input (e.g. "i accept....")
+    $normalizedResponse = $normalizedResponse -replace '[\s\.\!\?]+$', ''
 
     if ($normalizedResponse -imatch '^I\s+ACCEPT$') {
         Write-Host "✓ Consent accepted. Proceeding with System Optimizer..." -ForegroundColor Green
