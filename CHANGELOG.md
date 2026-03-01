@@ -41,6 +41,19 @@ All notable changes to System Optimizer will be documented in this file.
   - Verifies `CHANGELOG.md` contains `## [X.Y.Z]`.
   - Fails workflow on any version drift/mismatch.
 
+### Analyzer Remediation Pass
+
+- Resolved module analyzer warnings under repository analyzer settings (`Found 42 issues` -> `Found 0 issues`).
+- Replaced WMI usage with CIM in active modules:
+  - `Backup.psm1`, `Maintenance.psm1`, `Services.psm1`
+- Reworked logging wrappers to avoid overriding built-in cmdlets:
+  - `Backup.psm1`: introduced `Write-BackupLog` wrapper and updated call sites.
+  - `Utilities.psm1`: renamed local logger to `Write-UtilitiesLog`.
+- Cleaned empty catch blocks and unused parameter/variable warnings across touched modules.
+- Updated UI Tweaks function names to approved verbs and restored IE path variable usage in context:
+  - kept and used `$IESetup` and `$IEFeedback` in `Set-IEModeTweaks`.
+- Normalized BOM encoding for previously flagged module files.
+
 ## [2.0.0] - 2026-02-21
 
 ### Major Release - Code Quality & Architecture Overhaul
