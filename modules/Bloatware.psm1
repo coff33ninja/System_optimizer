@@ -557,7 +557,7 @@ Function Remove-Key {
                 }
             }
         } catch {
-            # Key pattern didn't match anything - that's fine
+            $null
         }
     }
 
@@ -962,6 +962,7 @@ General notes
 Function CheckDMWService {
 
     Param([switch]$Debloat)
+    $null = $Debloat
 
     If (Get-Service -Name dmwappushservice | Where-Object {$_.StartType -eq "Disabled"}) {
         Set-Service -Name dmwappushservice -StartupType Automatic

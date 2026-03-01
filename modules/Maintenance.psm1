@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # Maintenance Module - System Optimizer
 # ============================================================================
 # This module provides comprehensive system maintenance and repair tools.
@@ -1038,12 +1038,12 @@ function Get-DriveHealth {
 
             # Try to get additional SMART info via WMI
             try {
-                $wmiDisk = Get-WmiObject -Namespace "root\wmi" -Class MSStorageDriver_FailurePredictStatus | Where-Object { $_.InstanceName -like "*$($disk.DeviceId)*" }
+                $wmiDisk = Get-CimInstance -Namespace "root\wmi" -ClassName MSStorageDriver_FailurePredictStatus -ErrorAction SilentlyContinue | Where-Object { $_.InstanceName -like "*$($disk.DeviceId)*" }
                 if ($wmiDisk) {
                     Write-Host "    SMART Predict Failure: $($wmiDisk.PredictFailure)" -ForegroundColor $(if($wmiDisk.PredictFailure -eq $false){'Green'}else{'Red'})
                 }
             } catch {
-                # SMART data not available
+                $null
             }
 
             # Get temperature if available
@@ -1062,7 +1062,7 @@ function Get-DriveHealth {
                     Write-Host "    Start/Stop Cycles: $($temp.StartStopCycleCount)"
                 }
             } catch {
-                # Reliability counters not available
+                $null
             }
 
             Write-Host ""
@@ -1586,7 +1586,7 @@ function Start-StartupProgramManager {
             }
         } | Out-Null
     } catch {
-        # Win32_StartupCommand may not be available on all systems
+        $null
     }
 
     if ($startupItems.Count -eq 0) {

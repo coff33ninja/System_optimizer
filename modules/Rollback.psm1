@@ -259,6 +259,12 @@ function Set-TrackedRegistryValue {
         [switch]$Force
     )
 
+    # Preserve current default behavior (force writes), but allow callers to override with -Force:$false
+    $useForce = $true
+    if ($PSBoundParameters.ContainsKey("Force")) {
+        $useForce = [bool]$Force
+    }
+
     # Backup first
     $backup = Backup-RegistryValue -Path $Path -Name $Name -NewValue $Value -NewType $Type
 
@@ -271,9 +277,9 @@ function Set-TrackedRegistryValue {
         # Set value - use compatible method for all Windows versions
         # New-ItemProperty works on Win10/11, Set-ItemProperty for existing
         if ($backup.Existed) {
-            Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force
+            Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force:$useForce
         } else {
-            New-ItemProperty -Path $Path -Name $Name -Value $Value -PropertyType $Type -Force | Out-Null
+            New-ItemProperty -Path $Path -Name $Name -Value $Value -PropertyType $Type -Force:$useForce | Out-Null
         }
 
         return $true
@@ -1195,7 +1201,7 @@ function Get-RegistrySnapshot {
                     }
                 }
             } catch {
-                # Path exists but can't read
+                $null
             }
         }
     }

@@ -44,12 +44,11 @@ Version: 2.0.1
 $script:PSVersionMajor = $PSVersionTable.PSVersion.Major
 $script:WinBuild = [System.Environment]::OSVersion.Version.Build
 $script:IsWin8OrNewer = $WinBuild -ge 9200  # Windows 8 = 9200
-$script:HasCimCmdlets = $PSVersionMajor -ge 3
 
 function Get-CimOrWmi {
     <#
     .SYNOPSIS
-        Wrapper that uses Get-CimInstance on PS3+ or Get-WmiObject on PS2
+        Wrapper for CIM queries.
     #>
     param(
         [Parameter(Mandatory)]
@@ -58,19 +57,10 @@ function Get-CimOrWmi {
         [string]$Namespace = "root\cimv2"
     )
 
-    if ($script:HasCimCmdlets) {
-        if ($Filter) {
-            Get-CimInstance -ClassName $ClassName -Filter $Filter -Namespace $Namespace -ErrorAction SilentlyContinue
-        } else {
-            Get-CimInstance -ClassName $ClassName -Namespace $Namespace -ErrorAction SilentlyContinue
-        }
+    if ($Filter) {
+        Get-CimInstance -ClassName $ClassName -Filter $Filter -Namespace $Namespace -ErrorAction SilentlyContinue
     } else {
-        # Fallback for PowerShell 2.0
-        if ($Filter) {
-            Get-WmiObject -Class $ClassName -Filter $Filter -Namespace $Namespace -ErrorAction SilentlyContinue
-        } else {
-            Get-WmiObject -Class $ClassName -Namespace $Namespace -ErrorAction SilentlyContinue
-        }
+        Get-CimInstance -ClassName $ClassName -Namespace $Namespace -ErrorAction SilentlyContinue
     }
 }
 
@@ -560,7 +550,7 @@ function Get-DedicatedVRAMFromRegistry {
                 break
             }
         }
-    } catch { }
+    } catch { $null }
 
     return $result
 }

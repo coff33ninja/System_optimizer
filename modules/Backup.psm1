@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Backup Module - System Optimizer
@@ -71,18 +71,21 @@ function Get-SystemOptimizerVersion {
     return $script:SystemOptimizerVersion
 }
 
-# Fallback Write-Log if not available from Logging module
-if (-not $script:HasWriteLog) {
-    function Write-Log {
-        param([string]$Message, [string]$Type = "INFO")
-        $time = Get-Date -Format "HH:mm:ss"
-        switch ($Type) {
-            "SUCCESS" { Write-Host "[$time] [OK] $Message" -ForegroundColor Green }
-            "ERROR"   { Write-Host "[$time] [X] $Message" -ForegroundColor Red }
-            "WARNING" { Write-Host "[$time] [!] $Message" -ForegroundColor Yellow }
-            "SECTION" { Write-Host "`n[$time] === $Message ===" -ForegroundColor Cyan }
-            default   { Write-Host "[$time] [-] $Message" -ForegroundColor Gray }
-        }
+function Write-BackupLog {
+    param([string]$Message, [string]$Type = "INFO")
+
+    if ($script:HasWriteLog) {
+        & $script:HasWriteLog -Message $Message -Type $Type
+        return
+    }
+
+    $time = Get-Date -Format "HH:mm:ss"
+    switch ($Type) {
+        "SUCCESS" { Write-Host "[$time] [OK] $Message" -ForegroundColor Green }
+        "ERROR"   { Write-Host "[$time] [X] $Message" -ForegroundColor Red }
+        "WARNING" { Write-Host "[$time] [!] $Message" -ForegroundColor Yellow }
+        "SECTION" { Write-Host "`n[$time] === $Message ===" -ForegroundColor Cyan }
+        default   { Write-Host "[$time] [-] $Message" -ForegroundColor Gray }
     }
 }
 
@@ -145,11 +148,11 @@ function Get-BackupDestination {
                 if ($browser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                     return $browser.SelectedPath
                 } else {
-                    Write-Log "No folder selected, using default" "WARNING"
+                    Write-BackupLog "No folder selected, using default" "WARNING"
                     return $DefaultPath
                 }
             } catch {
-                Write-Log "Error opening folder browser, using default: $_" "WARNING"
+                Write-BackupLog "Error opening folder browser, using default: $_" "WARNING"
                 return $DefaultPath
             }
         }
@@ -172,7 +175,7 @@ function Get-ExternalDriveDestination {
     Write-Host "Detecting external drives..." -ForegroundColor Cyan
 
     # Get all removable and external drives
-    $externalDrives = Get-WmiObject -Class Win32_LogicalDisk | Where-Object {
+    $externalDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object {
         $_.DriveType -eq 2 -or $_.DriveType -eq 3 -and $_.DeviceID -ne "C:"
     } | Sort-Object DeviceID
 
@@ -231,20 +234,20 @@ function Get-ExternalDriveDestination {
             # Create backup directory if it doesn't exist
             if (-not (Test-Path $destinationPath)) {
                 New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
-                Write-Log "Created backup directory: $destinationPath" "SUCCESS"
+                Write-BackupLog "Created backup directory: $destinationPath" "SUCCESS"
             }
 
             if ($selectedDrive.HasBackups) {
-                Write-Log "Selected drive already contains backups" "INFO"
+                Write-BackupLog "Selected drive already contains backups" "INFO"
             }
 
             return $destinationPath
         } else {
-            Write-Log "Invalid selection, using default" "WARNING"
+            Write-BackupLog "Invalid selection, using default" "WARNING"
             return $DefaultPath
         }
     } catch {
-        Write-Log "Invalid input, using default" "WARNING"
+        Write-BackupLog "Invalid input, using default" "WARNING"
         return $DefaultPath
     }
 }
@@ -261,7 +264,7 @@ function Search-ExistingBackups {
     $searchPaths += $DefaultPath
 
     # Add all drives
-    $allDrives = Get-WmiObject -Class Win32_LogicalDisk | Where-Object { $_.DriveType -in @(2,3) }
+    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2,3) }
     foreach ($drive in $allDrives) {
         $searchPaths += "$($drive.DeviceID)\System_Optimizer_Backup\UserProfiles"
     }
@@ -292,7 +295,7 @@ function Search-ExistingBackups {
                             LastModified = $userFolder.LastWriteTime
                         }
                     } catch {
-                        # Skip invalid manifests
+                        $null
                     }
                 }
             }
@@ -334,14 +337,14 @@ function Search-ExistingBackups {
         $selectedIndex = [int]$selection
         if ($selectedIndex -gt 0 -and $selectedIndex -le $foundBackups.Count) {
             $selectedBackup = $foundBackups[$selectedIndex - 1]
-            Write-Log "Selected existing backup location: $($selectedBackup.ParentPath)" "SUCCESS"
+            Write-BackupLog "Selected existing backup location: $($selectedBackup.ParentPath)" "SUCCESS"
             return $selectedBackup.ParentPath
         } else {
-            Write-Log "Invalid selection, using default" "WARNING"
+            Write-BackupLog "Invalid selection, using default" "WARNING"
             return $DefaultPath
         }
     } catch {
-        Write-Log "Invalid input, using default" "WARNING"
+        Write-BackupLog "Invalid input, using default" "WARNING"
         return $DefaultPath
     }
 }
@@ -756,7 +759,7 @@ $script:AppData = $env:LOCALAPPDATA
 
 
 function Start-UserProfileBackup {
-    Write-Log "USER PROFILE BACKUP" "SECTION"
+    Write-BackupLog "USER PROFILE BACKUP" "SECTION"
 
     $destination = Get-BackupDestination
     $backupPath = "$destination\$Username"
@@ -767,7 +770,7 @@ function Start-UserProfileBackup {
         Write-Host "Existing backup found for user: $Username" -ForegroundColor Yellow
         $overwrite = Read-Host "Overwrite existing backup? (Y/N)"
         if ($overwrite -ne "Y" -and $overwrite -ne "y") {
-            Write-Log "Backup cancelled by user" "INFO"
+            Write-BackupLog "Backup cancelled by user" "INFO"
             return
         }
 
@@ -775,7 +778,7 @@ function Start-UserProfileBackup {
         $timestamp = Get-Date -Format "yyyy-MM-dd_HHmmss"
         $oldBackupPath = "$destination\${Username}_old_$timestamp"
         Rename-Item $backupPath $oldBackupPath -ErrorAction SilentlyContinue
-        Write-Log "Previous backup moved to: $oldBackupPath" "INFO"
+        Write-BackupLog "Previous backup moved to: $oldBackupPath" "INFO"
     }
 
     # Create backup directory
@@ -802,7 +805,7 @@ function Start-UserProfileBackup {
         "4" { $foldersToBackup = $BackupFolders.Essential + $BackupFolders.Browsers + $BackupFolders.Applications }
         "5" { $foldersToBackup = Get-CustomBackupSelection }
         default {
-            Write-Log "Invalid selection, using essential folders only" "WARNING"
+            Write-BackupLog "Invalid selection, using essential folders only" "WARNING"
             $foldersToBackup = $BackupFolders.Essential
         }
     }
@@ -815,8 +818,8 @@ function Start-UserProfileBackup {
         Start-Sleep 2
     }
 
-    Write-Log "Starting backup for user: $Username" "INFO"
-    Write-Log "Backup destination: $backupPath" "INFO"
+    Write-BackupLog "Starting backup for user: $Username" "INFO"
+    Write-BackupLog "Backup destination: $backupPath" "INFO"
 
     $backupStartTime = Get-Date
     $totalFolders = $foldersToBackup.Count
@@ -857,7 +860,7 @@ function Start-UserProfileBackup {
 
                 if (-not $hasProgress) {
                     Write-Progress -Activity "Backing up user profile" -Status "Processing $relativePath" -PercentComplete (($currentFolder / $totalFolders) * 100)
-                    Write-Log "Backing up: $relativePath - $folderSizeRounded MB" "INFO"
+                    Write-BackupLog "Backing up: $relativePath - $folderSizeRounded MB" "INFO"
                 }
 
                 # Create parent directory if needed
@@ -872,7 +875,7 @@ function Start-UserProfileBackup {
                 if ($hasProgress) {
                     Update-ProgressItem -ItemName $displayName -Status 'Success' -Message "${folderSizeRounded} MB"
                 } else {
-                    Write-Log "Successfully backed up: $relativePath" "SUCCESS"
+                    Write-BackupLog "Successfully backed up: $relativePath" "SUCCESS"
                 }
                 $successCount++
 
@@ -880,7 +883,7 @@ function Start-UserProfileBackup {
                 if ($hasProgress) {
                     Update-ProgressItem -ItemName $displayName -Status 'Failed' -Message $_.Exception.Message
                 } else {
-                    Write-Log "Failed to backup $relativePath`: $_" "ERROR"
+                    Write-BackupLog "Failed to backup $relativePath`: $_" "ERROR"
                 }
                 $failedCount++
             }
@@ -888,7 +891,7 @@ function Start-UserProfileBackup {
             if ($hasProgress) {
                 Update-ProgressItem -ItemName $displayName -Status 'Skipped' -Message "Not found"
             } else {
-                Write-Log "Folder not found, skipping: $relativePath" "WARNING"
+                Write-BackupLog "Folder not found, skipping: $relativePath" "WARNING"
             }
             $skippedCount++
         }
@@ -956,7 +959,7 @@ function Start-UserProfileBackup {
     Write-Host "  ─────────────────────────────────────────" -ForegroundColor DarkGray
     Write-Host ""
 
-    Write-Log "Backup completed successfully!" "SUCCESS"
+    Write-BackupLog "Backup completed successfully!" "SUCCESS"
 
     # Open backup folder
     $openFolder = Read-Host "Open backup folder? (Y/N)"
@@ -966,7 +969,7 @@ function Start-UserProfileBackup {
 }
 
 function Start-UserProfileRestore {
-    Write-Log "USER PROFILE RESTORE" "SECTION"
+    Write-BackupLog "USER PROFILE RESTORE" "SECTION"
 
     # First, search for all available backups
     Write-Host ""
@@ -978,7 +981,7 @@ function Start-UserProfileRestore {
     $searchPaths += "C:\System_Optimizer_Backup\UserProfiles"
 
     # Add all drives
-    $allDrives = Get-WmiObject -Class Win32_LogicalDisk | Where-Object { $_.DriveType -in @(2,3) }
+    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2,3) }
     foreach ($drive in $allDrives) {
         $searchPaths += "$($drive.DeviceID)\System_Optimizer_Backup\UserProfiles"
     }
@@ -1001,7 +1004,7 @@ function Start-UserProfileRestore {
                             LastModified = $userFolder.LastWriteTime
                         }
                     } catch {
-                        # Skip invalid manifests
+                        $null
                     }
                 }
             }
@@ -1009,7 +1012,7 @@ function Start-UserProfileRestore {
     }
 
     if ($availableBackups.Count -eq 0) {
-        Write-Log "No backups found on any drive" "ERROR"
+        Write-BackupLog "No backups found on any drive" "ERROR"
         Write-Host ""
         Write-Host "No backups were found. Please create a backup first." -ForegroundColor Yellow
         return
@@ -1072,7 +1075,7 @@ function Start-UserProfileRestore {
     $selection = Read-Host "Select backup to restore (0-$($backupList.Count))"
 
     if ($selection -eq "0" -or $selection -eq "") {
-        Write-Log "Restore cancelled by user" "INFO"
+        Write-BackupLog "Restore cancelled by user" "INFO"
         return
     }
 
@@ -1083,11 +1086,11 @@ function Start-UserProfileRestore {
             $backupPath = $selectedBackup.Path
             $manifest = $selectedBackup.Manifest
         } else {
-            Write-Log "Invalid selection" "ERROR"
+            Write-BackupLog "Invalid selection" "ERROR"
             return
         }
     } catch {
-        Write-Log "Invalid input" "ERROR"
+        Write-BackupLog "Invalid input" "ERROR"
         return
     }
 
@@ -1112,11 +1115,11 @@ function Start-UserProfileRestore {
 
     $confirm = Read-Host "Continue with restore? (Y/N)"
     if ($confirm -ne "Y" -and $confirm -ne "y") {
-        Write-Log "Restore cancelled by user" "INFO"
+        Write-BackupLog "Restore cancelled by user" "INFO"
         return
     }
 
-    Write-Log "Starting restore from: $backupPath" "INFO"
+    Write-BackupLog "Starting restore from: $backupPath" "INFO"
 
     # Get list of folders to restore from manifest or directory listing
     if ($manifest.FoldersBackedUp) {
@@ -1142,7 +1145,7 @@ function Start-UserProfileRestore {
         if (Test-Path $sourcePath) {
             try {
                 if (-not $hasProgress) {
-                    Write-Log "Restoring: $folderName" "INFO"
+                    Write-BackupLog "Restoring: $folderName" "INFO"
                 }
 
                 # Backup existing folder if it exists
@@ -1166,7 +1169,7 @@ function Start-UserProfileRestore {
                 if ($hasProgress) {
                     Update-ProgressItem -ItemName $displayName -Status 'Success'
                 } else {
-                    Write-Log "Successfully restored: $folderName" "SUCCESS"
+                    Write-BackupLog "Successfully restored: $folderName" "SUCCESS"
                 }
                 $restoredCount++
 
@@ -1174,7 +1177,7 @@ function Start-UserProfileRestore {
                 if ($hasProgress) {
                     Update-ProgressItem -ItemName $displayName -Status 'Failed' -Message $_.Exception.Message
                 } else {
-                    Write-Log "Failed to restore $folderName`: $_" "ERROR"
+                    Write-BackupLog "Failed to restore $folderName`: $_" "ERROR"
                 }
                 $failedCount++
             }
@@ -1182,7 +1185,7 @@ function Start-UserProfileRestore {
             if ($hasProgress) {
                 Update-ProgressItem -ItemName $displayName -Status 'Skipped' -Message "Not found"
             } else {
-                Write-Log "Source folder not found: $folderName" "WARNING"
+                Write-BackupLog "Source folder not found: $folderName" "WARNING"
             }
         }
     }
@@ -1216,12 +1219,12 @@ function Start-UserProfileRestore {
     Write-Host "  ─────────────────────────────────────────" -ForegroundColor DarkGray
     Write-Host ""
 
-    Write-Log "Restore completed! ($restoredCount/$($foldersToRestore.Count) folders)" "SUCCESS"
-    Write-Log "Please restart applications to see restored data" "INFO"
+    Write-BackupLog "Restore completed! ($restoredCount/$($foldersToRestore.Count) folders)" "SUCCESS"
+    Write-BackupLog "Please restart applications to see restored data" "INFO"
 }
 
 function Start-BrowserBackup {
-    Write-Log "BROWSER DATA BACKUP" "SECTION"
+    Write-BackupLog "BROWSER DATA BACKUP" "SECTION"
 
     $destination = Get-BackupDestination
     $backupPath = "$destination\$Username\BrowsersOnly"
@@ -1244,7 +1247,7 @@ function Start-BrowserBackup {
                 $folderSize = (Get-ChildItem -Path $sourcePath -Recurse -Force -ErrorAction SilentlyContinue |
                               Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
 
-                Write-Log "Backing up browser data: $folder ($([Math]::Round($folderSize, 1)) MB)" "INFO"
+                Write-BackupLog "Backing up browser data: $folder ($([Math]::Round($folderSize, 1)) MB)" "INFO"
 
                 $parentDir = Split-Path $targetPath -Parent
                 if (-not (Test-Path $parentDir)) {
@@ -1252,19 +1255,19 @@ function Start-BrowserBackup {
                 }
 
                 Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force -ErrorAction Stop
-                Write-Log "Successfully backed up: $folder" "SUCCESS"
+                Write-BackupLog "Successfully backed up: $folder" "SUCCESS"
 
             } catch {
-                Write-Log "Failed to backup $folder`: $_" "ERROR"
+                Write-BackupLog "Failed to backup $folder`: $_" "ERROR"
             }
         }
     }
 
-    Write-Log "Browser backup completed!" "SUCCESS"
+    Write-BackupLog "Browser backup completed!" "SUCCESS"
 }
 
 function Start-OutlookBackup {
-    Write-Log "OUTLOOK DATA BACKUP" "SECTION"
+    Write-BackupLog "OUTLOOK DATA BACKUP" "SECTION"
 
     $destination = Get-BackupDestination
     $backupPath = "$destination\$Username\OutlookOnly"
@@ -1292,7 +1295,7 @@ function Start-OutlookBackup {
 
         if (Test-Path $sourcePath) {
             try {
-                Write-Log "Backing up Outlook folder: $folder" "INFO"
+                Write-BackupLog "Backing up Outlook folder: $folder" "INFO"
 
                 $parentDir = Split-Path $targetPath -Parent
                 if (-not (Test-Path $parentDir)) {
@@ -1300,21 +1303,21 @@ function Start-OutlookBackup {
                 }
 
                 Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force -ErrorAction Stop
-                Write-Log "Successfully backed up: $folder" "SUCCESS"
+                Write-BackupLog "Successfully backed up: $folder" "SUCCESS"
 
             } catch {
-                Write-Log "Failed to backup $folder`: $_" "ERROR"
+                Write-BackupLog "Failed to backup $folder`: $_" "ERROR"
             }
         }
     }
 
-    Write-Log "Outlook backup completed!" "SUCCESS"
+    Write-BackupLog "Outlook backup completed!" "SUCCESS"
 }
 
 function Backup-OutlookPSTFiles {
     param([string]$BackupPath)
 
-    Write-Log "Backing up Outlook PST files..." "INFO"
+    Write-BackupLog "Backing up Outlook PST files..." "INFO"
 
     # Common PST file locations
     $pstLocations = @(
@@ -1336,28 +1339,28 @@ function Backup-OutlookPSTFiles {
             foreach ($pst in $pstFiles) {
                 try {
                     $pstSize = [Math]::Round($pst.Length / 1MB, 1)
-                    Write-Log "Backing up PST file: $($pst.Name) ($pstSize MB)" "INFO"
+                    Write-BackupLog "Backing up PST file: $($pst.Name) ($pstSize MB)" "INFO"
 
                     Copy-Item -Path $pst.FullName -Destination $pstBackupPath -Force -ErrorAction Stop
                     $pstCount++
-                    Write-Log "Successfully backed up PST: $($pst.Name)" "SUCCESS"
+                    Write-BackupLog "Successfully backed up PST: $($pst.Name)" "SUCCESS"
 
                 } catch {
-                    Write-Log "Failed to backup PST $($pst.Name): $_" "ERROR"
+                    Write-BackupLog "Failed to backup PST $($pst.Name): $_" "ERROR"
                 }
             }
         }
     }
 
     if ($pstCount -eq 0) {
-        Write-Log "No PST files found to backup" "INFO"
+        Write-BackupLog "No PST files found to backup" "INFO"
     } else {
-        Write-Log "Backed up $pstCount PST files" "SUCCESS"
+        Write-BackupLog "Backed up $pstCount PST files" "SUCCESS"
     }
 }
 
 function Show-BackupStatus {
-    Write-Log "BACKUP STATUS" "SECTION"
+    Write-BackupLog "BACKUP STATUS" "SECTION"
 
     Write-Host ""
     Write-Host "Searching all locations for backups..." -ForegroundColor Cyan
@@ -1368,7 +1371,7 @@ function Show-BackupStatus {
     $searchPaths += "C:\System_Optimizer_Backup\UserProfiles"
 
     # Add all drives
-    $allDrives = Get-WmiObject -Class Win32_LogicalDisk | Where-Object { $_.DriveType -in @(2,3) }
+    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2,3) }
     foreach ($drive in $allDrives) {
         $searchPaths += "$($drive.DeviceID)\System_Optimizer_Backup\UserProfiles"
     }
@@ -1398,7 +1401,7 @@ function Show-BackupStatus {
                             $currentUserBackups += $backupInfo
                         }
                     } catch {
-                        # Skip invalid manifests
+                        $null
                     }
                 }
             }

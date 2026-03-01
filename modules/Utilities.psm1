@@ -11,7 +11,7 @@ Exported Functions:
     Test-OptimizationStatus     - Check current optimization status
     Show-LogViewer              - Interactive log viewer
     Initialize-Logging          - Initialize logging (compatibility)
-    Write-Log                   - Write log entry (wrapper)
+    Write-UtilitiesLog                   - Write log entry (wrapper)
     Set-ConsoleSize             - Set console window dimensions
     Show-Menu                   - Display formatted menu
 
@@ -23,20 +23,20 @@ Features:
 
 Dependencies:
     - Requires admin privileges for Wi-Fi password extraction
-    - Logging module for Write-Log functionality
+    - Logging module for Write-UtilitiesLog functionality
 
 Version: 2.0.1
 #>
 
 function Get-WifiPasswords {
-    Write-Log "EXTRACTING WI-FI PASSWORDS" "SECTION"
+    Write-UtilitiesLog "EXTRACTING WI-FI PASSWORDS" "SECTION"
 
     $profiles = netsh wlan show profiles | Select-String "All User Profile" | ForEach-Object {
         ($_ -split ":")[1].Trim()
     }
 
     if ($profiles.Count -eq 0) {
-        Write-Log "No Wi-Fi profiles found" "WARNING"
+        Write-UtilitiesLog "No Wi-Fi profiles found" "WARNING"
         return
     }
 
@@ -54,13 +54,13 @@ function Get-WifiPasswords {
             Password = $password
         }
 
-        Write-Log "SSID: $wifiProfile | Password: $password" "INFO"
+        Write-UtilitiesLog "SSID: $wifiProfile | Password: $password" "INFO"
     }
 
     # Save to file
     $wifiFile = "C:\temp\wifi_passwords_$(Get-Date -Format 'yyyy-MM-dd').txt"
     $wifiData | Format-Table -AutoSize | Out-String | Set-Content -Path $wifiFile
-    Write-Log "Wi-Fi passwords saved to: $wifiFile" "SUCCESS"
+    Write-UtilitiesLog "Wi-Fi passwords saved to: $wifiFile" "SUCCESS"
 
     # Display table
     Write-Host ""
@@ -68,7 +68,7 @@ function Get-WifiPasswords {
 }
 
 function Test-OptimizationStatus {
-    Write-Log "VERIFYING OPTIMIZATION STATUS" "SECTION"
+    Write-UtilitiesLog "VERIFYING OPTIMIZATION STATUS" "SECTION"
 
     Write-Host ""
     Write-Host "=== SYSTEM STATUS ===" -ForegroundColor Cyan
@@ -141,13 +141,13 @@ function Test-OptimizationStatus {
     }
 
     Write-Host ""
-    Write-Log "Verification completed" "SUCCESS"
+    Write-UtilitiesLog "Verification completed" "SUCCESS"
 }
 
 function Show-LogViewer {
     Set-ConsoleSize
     Clear-Host
-    Write-Log "LOG VIEWER" "SECTION"
+    Write-UtilitiesLog "LOG VIEWER" "SECTION"
 
     Write-Host ""
     Write-Host "  Log Directory: $LogDir" -ForegroundColor Cyan
@@ -213,9 +213,9 @@ function Show-LogViewer {
             # Open log folder
             if (Test-Path $LogDir) {
                 Start-Process explorer.exe -ArgumentList $LogDir
-                Write-Log "Opened log folder: $LogDir" "SUCCESS"
+                Write-UtilitiesLog "Opened log folder: $LogDir" "SUCCESS"
             } else {
-                Write-Log "Log folder does not exist" "WARNING"
+                Write-UtilitiesLog "Log folder does not exist" "WARNING"
             }
         }
         "4" {
@@ -245,7 +245,7 @@ LOG FILES IN $LogDir`:
             }
 
             $summary | Out-File $summaryPath -Force
-            Write-Log "Summary exported to: $summaryPath" "SUCCESS"
+            Write-UtilitiesLog "Summary exported to: $summaryPath" "SUCCESS"
             Start-Process notepad.exe -ArgumentList $summaryPath
         }
         "5" {
@@ -259,7 +259,7 @@ LOG FILES IN $LogDir`:
                 $confirm = Read-Host "Delete them? (Y/N)"
                 if ($confirm -eq "Y" -or $confirm -eq "y") {
                     $oldLogs | Remove-Item -Force
-                    Write-Log "Deleted $($oldLogs.Count) old log files" "SUCCESS"
+                    Write-UtilitiesLog "Deleted $($oldLogs.Count) old log files" "SUCCESS"
                 }
             } else {
                 Write-Host "  No logs older than 30 days found" -ForegroundColor Green
@@ -299,7 +299,7 @@ PowerShell: $($PSVersionTable.PSVersion)
         Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
-function Write-Log {
+function Write-UtilitiesLog {
     param([string]$Message, [string]$Type = "INFO")
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $shortTime = Get-Date -Format "HH:mm:ss"
@@ -350,6 +350,7 @@ function Set-ConsoleSize {
         }
     } catch {
         # Silently ignore sizing errors (happens in some terminals)
+        $null
     }
 }
 
@@ -414,7 +415,7 @@ Export-ModuleMember -Function @(
     'Test-OptimizationStatus',
     'Show-LogViewer',
     'Initialize-Logging',
-    'Write-Log',
+    'Write-UtilitiesLog',
     'Set-ConsoleSize',
     'Show-Menu'
 )

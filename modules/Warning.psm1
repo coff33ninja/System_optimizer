@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     First-Run Warning and Consent System
 

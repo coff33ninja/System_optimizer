@@ -127,6 +127,7 @@ function Find-FeaturesFile {
         }
     } catch {
         # Download failed - will return null
+        $null
     }
     
     return $null

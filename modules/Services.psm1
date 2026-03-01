@@ -389,7 +389,7 @@ function Set-WinUtilServiceConfig {
             try {
                 $service = Get-Service -Name $svcName -ErrorAction SilentlyContinue
                 if ($service) {
-                    $currentType = (Get-WmiObject -Class Win32_Service -Filter "Name='$svcName'" -ErrorAction SilentlyContinue).StartMode
+                    $currentType = (Get-CimInstance -ClassName Win32_Service -Filter "Name='$svcName'" -ErrorAction SilentlyContinue).StartMode
 
                     # Map WinUtil types to PowerShell types
                     $psType = switch ($targetType) {
@@ -507,7 +507,7 @@ function Export-CurrentServiceStates {
     $exportPath = "C:\System_Optimizer\service_backup_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').json"
 
     try {
-        $services = Get-WmiObject -Class Win32_Service | Select-Object Name, StartMode, State, DisplayName
+        $services = Get-CimInstance -ClassName Win32_Service -ErrorAction SilentlyContinue | Select-Object Name, StartMode, State, DisplayName
 
         $exportData = @{
             ExportDate = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
