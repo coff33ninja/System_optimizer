@@ -224,6 +224,7 @@ function Initialize-ModuleCache {
     $targetModulesPath = $Config.PersistentModulesDir
     $targetVersionFile = Join-Path $targetModulesPath ".version"
     $currentVersion = $Config.Version
+    $forceSync = [bool]$Config.IsEmbeddedEXE
 
     if (-not (Test-Path $sourceModulesPath)) {
         return
@@ -240,7 +241,7 @@ function Initialize-ModuleCache {
         ""
     }
 
-    if ((Test-Path $targetModulesPath) -and ($cachedVersion -eq $currentVersion)) {
+    if ((Test-Path $targetModulesPath) -and ($cachedVersion -eq $currentVersion) -and -not $forceSync) {
         if ($Config.IsEmbeddedEXE) {
             $script:Config.ModulesDir = $targetModulesPath
             Write-Log "Using persistent module cache v$cachedVersion from $targetModulesPath" "INFO"

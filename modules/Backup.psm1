@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Backup Module - System Optimizer
@@ -63,7 +63,8 @@ function Get-SystemOptimizerVersion {
                 $script:SystemOptimizerVersion = [string]$data.Version
                 return $script:SystemOptimizerVersion
             }
-        } catch {
+        }
+        catch {
             $null
         }
     }
@@ -82,10 +83,10 @@ function Write-BackupLog {
     $time = Get-Date -Format "HH:mm:ss"
     switch ($Type) {
         "SUCCESS" { Write-Host "[$time] [OK] $Message" -ForegroundColor Green }
-        "ERROR"   { Write-Host "[$time] [X] $Message" -ForegroundColor Red }
+        "ERROR" { Write-Host "[$time] [X] $Message" -ForegroundColor Red }
         "WARNING" { Write-Host "[$time] [!] $Message" -ForegroundColor Yellow }
         "SECTION" { Write-Host "`n[$time] === $Message ===" -ForegroundColor Cyan }
-        default   { Write-Host "[$time] [-] $Message" -ForegroundColor Gray }
+        default { Write-Host "[$time] [-] $Message" -ForegroundColor Gray }
     }
 }
 
@@ -147,11 +148,13 @@ function Get-BackupDestination {
 
                 if ($browser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                     return $browser.SelectedPath
-                } else {
+                }
+                else {
                     Write-BackupLog "No folder selected, using default" "WARNING"
                     return $DefaultPath
                 }
-            } catch {
+            }
+            catch {
                 Write-BackupLog "Error opening folder browser, using default: $_" "WARNING"
                 return $DefaultPath
             }
@@ -208,8 +211,8 @@ function Get-ExternalDriveDestination {
         Write-Host "  [$driveIndex] $($drive.DeviceID) ($driveType) - $freeSpaceGB GB free / $totalSpaceGB GB total$backupIndicator" -ForegroundColor Gray
 
         $driveList += @{
-            Index = $driveIndex
-            Drive = $drive
+            Index      = $driveIndex
+            Drive      = $drive
             BackupPath = $backupPath
             HasBackups = $hasBackups
         }
@@ -242,11 +245,13 @@ function Get-ExternalDriveDestination {
             }
 
             return $destinationPath
-        } else {
+        }
+        else {
             Write-BackupLog "Invalid selection, using default" "WARNING"
             return $DefaultPath
         }
-    } catch {
+    }
+    catch {
         Write-BackupLog "Invalid input, using default" "WARNING"
         return $DefaultPath
     }
@@ -264,7 +269,7 @@ function Search-ExistingBackups {
     $searchPaths += $DefaultPath
 
     # Add all drives
-    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2,3) }
+    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2, 3) }
     foreach ($drive in $allDrives) {
         $searchPaths += "$($drive.DeviceID)\System_Optimizer_Backup\UserProfiles"
     }
@@ -289,12 +294,13 @@ function Search-ExistingBackups {
                     try {
                         $manifest = Get-Content $manifestPath | ConvertFrom-Json
                         $foundBackups += @{
-                            Path = $userFolder.FullName
-                            ParentPath = $path
-                            Manifest = $manifest
+                            Path         = $userFolder.FullName
+                            ParentPath   = $path
+                            Manifest     = $manifest
                             LastModified = $userFolder.LastWriteTime
                         }
-                    } catch {
+                    }
+                    catch {
                         $null
                     }
                 }
@@ -339,11 +345,13 @@ function Search-ExistingBackups {
             $selectedBackup = $foundBackups[$selectedIndex - 1]
             Write-BackupLog "Selected existing backup location: $($selectedBackup.ParentPath)" "SUCCESS"
             return $selectedBackup.ParentPath
-        } else {
+        }
+        else {
             Write-BackupLog "Invalid selection, using default" "WARNING"
             return $DefaultPath
         }
-    } catch {
+    }
+    catch {
         Write-BackupLog "Invalid input, using default" "WARNING"
         return $DefaultPath
     }
@@ -351,7 +359,7 @@ function Search-ExistingBackups {
 
 # Enhanced folder list with more browser support and user data
 $script:BackupFolders = @{
-    "Essential" = @(
+    "Essential"    = @(
         "Desktop",
         "Downloads",
         "Favorites",
@@ -360,7 +368,7 @@ $script:BackupFolders = @{
         "Pictures",
         "Videos"
     )
-    "Browsers" = @(
+    "Browsers"     = @(
         "AppData\Local\Mozilla",           # Firefox
         "AppData\Roaming\Mozilla",         # Firefox profiles
         "AppData\Local\Google",            # Chrome
@@ -410,7 +418,8 @@ function Get-CustomBackupSelection {
                 foreach ($path in $customPaths) {
                     $displayPath = if ($path.StartsWith($UserProfile)) {
                         $path.Replace($UserProfile, "~")
-                    } else { $path }
+                    }
+                    else { $path }
                     Write-Host "    • $displayPath" -ForegroundColor Gray
                 }
             }
@@ -472,7 +481,8 @@ function Get-CustomBackupSelection {
                     if ($selectedFolders -contains $folder) {
                         $selectedFolders = $selectedFolders | Where-Object { $_ -ne $folder }
                         Write-Host "Removed: $folder" -ForegroundColor Yellow
-                    } else {
+                    }
+                    else {
                         $selectedFolders += $folder
                         Write-Host "Added: $folder" -ForegroundColor Green
                     }
@@ -487,7 +497,8 @@ function Get-CustomBackupSelection {
                     if ($selectedFolders -contains $folder) {
                         $selectedFolders = $selectedFolders | Where-Object { $_ -ne $folder }
                         Write-Host "Removed: $folder" -ForegroundColor Yellow
-                    } else {
+                    }
+                    else {
                         $selectedFolders += $folder
                         Write-Host "Added: $folder" -ForegroundColor Green
                     }
@@ -502,7 +513,8 @@ function Get-CustomBackupSelection {
                     if ($selectedFolders -contains $folder) {
                         $selectedFolders = $selectedFolders | Where-Object { $_ -ne $folder }
                         Write-Host "Removed: $folder" -ForegroundColor Yellow
-                    } else {
+                    }
+                    else {
                         $selectedFolders += $folder
                         Write-Host "Added: $folder" -ForegroundColor Green
                     }
@@ -546,7 +558,8 @@ function Get-CustomBackupSelection {
                 if ($selectedFolders.Count -eq 0 -and $customPaths.Count -eq 0) {
                     Write-Host "No items selected. Please select at least one item to backup." -ForegroundColor Red
                     Start-Sleep 2
-                } else {
+                }
+                else {
                     break
                 }
             }
@@ -606,7 +619,8 @@ function Add-CustomPath {
     # Check if path exists
     $fullPath = if ([System.IO.Path]::IsPathRooted($path)) {
         $path
-    } else {
+    }
+    else {
         Join-Path $UserProfile $path
     }
 
@@ -616,11 +630,13 @@ function Add-CustomPath {
         if ($confirm -ne "Y" -and $confirm -ne "y") {
             return $null
         }
-    } else {
+    }
+    else {
         $size = try {
             (Get-ChildItem -Path $fullPath -Recurse -Force -ErrorAction SilentlyContinue |
-             Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
-        } catch { 0 }
+            Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
+        }
+        catch { 0 }
         Write-Host "Path exists. Size: $([Math]::Round($size, 1)) MB" -ForegroundColor Green
     }
 
@@ -739,14 +755,16 @@ function Remove-Selection {
 
             if ($itemToRemove.Type -eq "Standard") {
                 $SelectedFolders.Value = $SelectedFolders.Value | Where-Object { $_ -ne $itemToRemove.Path }
-            } else {
+            }
+            else {
                 $CustomPaths.Value = $CustomPaths.Value | Where-Object { $_ -ne $itemToRemove.Path }
             }
 
             Write-Host "Removed: $($itemToRemove.Path)" -ForegroundColor Yellow
             Start-Sleep 1
         }
-    } catch {
+    }
+    catch {
         Write-Host "Invalid selection" -ForegroundColor Red
         Start-Sleep 1
     }
@@ -842,7 +860,8 @@ function Start-UserProfileBackup {
         if ([System.IO.Path]::IsPathRooted($folder)) {
             $currentLocalFolder = $folder
             $relativePath = $folder.Replace(":", "_drive")  # Convert C: to C_drive for backup structure
-        } else {
+        }
+        else {
             $currentLocalFolder = Join-Path $UserProfile $folder
             $relativePath = $folder
         }
@@ -854,7 +873,7 @@ function Start-UserProfileBackup {
             try {
                 # Calculate folder size
                 $folderSize = (Get-ChildItem -Path $currentLocalFolder -Recurse -Force -ErrorAction SilentlyContinue |
-                              Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
+                    Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
                 $folderSizeRounded = [Math]::Round($folderSize, 1)
                 $totalSize += $folderSizeRounded
 
@@ -874,23 +893,28 @@ function Start-UserProfileBackup {
 
                 if ($hasProgress) {
                     Update-ProgressItem -ItemName $displayName -Status 'Success' -Message "${folderSizeRounded} MB"
-                } else {
+                }
+                else {
                     Write-BackupLog "Successfully backed up: $relativePath" "SUCCESS"
                 }
                 $successCount++
 
-            } catch {
+            }
+            catch {
                 if ($hasProgress) {
                     Update-ProgressItem -ItemName $displayName -Status 'Failed' -Message $_.Exception.Message
-                } else {
+                }
+                else {
                     Write-BackupLog "Failed to backup $relativePath`: $_" "ERROR"
                 }
                 $failedCount++
             }
-        } else {
+        }
+        else {
             if ($hasProgress) {
                 Update-ProgressItem -ItemName $displayName -Status 'Skipped' -Message "Not found"
-            } else {
+            }
+            else {
                 Write-BackupLog "Folder not found, skipping: $relativePath" "WARNING"
             }
             $skippedCount++
@@ -904,37 +928,38 @@ function Start-UserProfileBackup {
 
     if ($hasProgress) {
         Complete-ProgressOperation
-    } else {
+    }
+    else {
         Write-Progress -Activity "Backing up user profile" -Completed
     }
 
     # Create backup manifest with enhanced metadata
     $manifest = @{
-        Username = $Username
-        ComputerName = $env:COMPUTERNAME
-        BackupDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        Username        = $Username
+        ComputerName    = $env:COMPUTERNAME
+        BackupDate      = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         BackupTimestamp = (Get-Date).Ticks
-        BackupType = switch ($backupChoice) {
+        BackupType      = switch ($backupChoice) {
             "1" { "Essential" }
             "2" { "Essential + Browsers" }
             "3" { "Essential + Applications" }
             "4" { "Full Backup" }
             "5" { "Custom Selection" }
         }
-        TotalSizeMB = [Math]::Round($totalSize, 1)
+        TotalSizeMB     = [Math]::Round($totalSize, 1)
         FoldersBackedUp = $foldersToBackup
-        BackupLocation = $backupPath
-        SystemInfo = @{
-            OSVersion = (Get-CimInstance Win32_OperatingSystem).Caption
-            PowerShellVersion = $PSVersionTable.PSVersion.ToString()
+        BackupLocation  = $backupPath
+        SystemInfo      = @{
+            OSVersion              = (Get-CimInstance Win32_OperatingSystem).Caption
+            PowerShellVersion      = $PSVersionTable.PSVersion.ToString()
             SystemOptimizerVersion = Get-SystemOptimizerVersion
         }
-        BackupStats = @{
-            TotalFolders = $totalFolders
+        BackupStats     = @{
+            TotalFolders      = $totalFolders
             SuccessfulBackups = $successCount
-            FailedBackups = $failedCount
-            SkippedBackups = $skippedCount
-            BackupDuration = $null  # Will be calculated
+            FailedBackups     = $failedCount
+            SkippedBackups    = $skippedCount
+            BackupDuration    = $null  # Will be calculated
         }
     }
 
@@ -981,7 +1006,7 @@ function Start-UserProfileRestore {
     $searchPaths += "C:\System_Optimizer_Backup\UserProfiles"
 
     # Add all drives
-    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2,3) }
+    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2, 3) }
     foreach ($drive in $allDrives) {
         $searchPaths += "$($drive.DeviceID)\System_Optimizer_Backup\UserProfiles"
     }
@@ -998,12 +1023,13 @@ function Start-UserProfileRestore {
                     try {
                         $manifest = Get-Content $manifestPath | ConvertFrom-Json
                         $availableBackups += @{
-                            Path = $userFolder.FullName
-                            ParentPath = $path
-                            Manifest = $manifest
+                            Path         = $userFolder.FullName
+                            ParentPath   = $path
+                            Manifest     = $manifest
                             LastModified = $userFolder.LastWriteTime
                         }
-                    } catch {
+                    }
+                    catch {
                         $null
                     }
                 }
@@ -1085,11 +1111,13 @@ function Start-UserProfileRestore {
             $selectedBackup = $backupList[$selectedIndex - 1]
             $backupPath = $selectedBackup.Path
             $manifest = $selectedBackup.Manifest
-        } else {
+        }
+        else {
             Write-BackupLog "Invalid selection" "ERROR"
             return
         }
-    } catch {
+    }
+    catch {
         Write-BackupLog "Invalid input" "ERROR"
         return
     }
@@ -1124,7 +1152,8 @@ function Start-UserProfileRestore {
     # Get list of folders to restore from manifest or directory listing
     if ($manifest.FoldersBackedUp) {
         $foldersToRestore = $manifest.FoldersBackedUp
-    } else {
+    }
+    else {
         # Fallback for legacy backups without manifest
         $foldersToRestore = Get-ChildItem -Path $backupPath -Directory | Where-Object { $_.Name -ne "backup_manifest.json" } | ForEach-Object { $_.Name }
     }
@@ -1168,23 +1197,28 @@ function Start-UserProfileRestore {
 
                 if ($hasProgress) {
                     Update-ProgressItem -ItemName $displayName -Status 'Success'
-                } else {
+                }
+                else {
                     Write-BackupLog "Successfully restored: $folderName" "SUCCESS"
                 }
                 $restoredCount++
 
-            } catch {
+            }
+            catch {
                 if ($hasProgress) {
                     Update-ProgressItem -ItemName $displayName -Status 'Failed' -Message $_.Exception.Message
-                } else {
+                }
+                else {
                     Write-BackupLog "Failed to restore $folderName`: $_" "ERROR"
                 }
                 $failedCount++
             }
-        } else {
+        }
+        else {
             if ($hasProgress) {
                 Update-ProgressItem -ItemName $displayName -Status 'Skipped' -Message "Not found"
-            } else {
+            }
+            else {
                 Write-BackupLog "Source folder not found: $folderName" "WARNING"
             }
         }
@@ -1196,14 +1230,14 @@ function Start-UserProfileRestore {
 
     # Create restore log
     $restoreLog = @{
-        RestoreDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        RestoredFrom = $backupPath
-        OriginalBackup = $manifest
-        RestoredToUser = $Username
+        RestoreDate        = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        RestoredFrom       = $backupPath
+        OriginalBackup     = $manifest
+        RestoredToUser     = $Username
         RestoredToComputer = $env:COMPUTERNAME
-        FoldersRestored = $restoredCount
-        FoldersFailed = $failedCount
-        TotalFolders = $foldersToRestore.Count
+        FoldersRestored    = $restoredCount
+        FoldersFailed      = $failedCount
+        TotalFolders       = $foldersToRestore.Count
     }
 
     $restoreLog | ConvertTo-Json -Depth 4 | Out-File "$backupPath\restore_log_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').json" -Encoding UTF8
@@ -1245,7 +1279,7 @@ function Start-BrowserBackup {
         if (Test-Path $sourcePath) {
             try {
                 $folderSize = (Get-ChildItem -Path $sourcePath -Recurse -Force -ErrorAction SilentlyContinue |
-                              Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
+                    Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
 
                 Write-BackupLog "Backing up browser data: $folder ($([Math]::Round($folderSize, 1)) MB)" "INFO"
 
@@ -1257,7 +1291,8 @@ function Start-BrowserBackup {
                 Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force -ErrorAction Stop
                 Write-BackupLog "Successfully backed up: $folder" "SUCCESS"
 
-            } catch {
+            }
+            catch {
                 Write-BackupLog "Failed to backup $folder`: $_" "ERROR"
             }
         }
@@ -1305,7 +1340,8 @@ function Start-OutlookBackup {
                 Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force -ErrorAction Stop
                 Write-BackupLog "Successfully backed up: $folder" "SUCCESS"
 
-            } catch {
+            }
+            catch {
                 Write-BackupLog "Failed to backup $folder`: $_" "ERROR"
             }
         }
@@ -1345,7 +1381,8 @@ function Backup-OutlookPSTFiles {
                     $pstCount++
                     Write-BackupLog "Successfully backed up PST: $($pst.Name)" "SUCCESS"
 
-                } catch {
+                }
+                catch {
                     Write-BackupLog "Failed to backup PST $($pst.Name): $_" "ERROR"
                 }
             }
@@ -1354,7 +1391,8 @@ function Backup-OutlookPSTFiles {
 
     if ($pstCount -eq 0) {
         Write-BackupLog "No PST files found to backup" "INFO"
-    } else {
+    }
+    else {
         Write-BackupLog "Backed up $pstCount PST files" "SUCCESS"
     }
 }
@@ -1371,7 +1409,7 @@ function Show-BackupStatus {
     $searchPaths += "C:\System_Optimizer_Backup\UserProfiles"
 
     # Add all drives
-    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2,3) }
+    $allDrives = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -in @(2, 3) }
     foreach ($drive in $allDrives) {
         $searchPaths += "$($drive.DeviceID)\System_Optimizer_Backup\UserProfiles"
     }
@@ -1389,18 +1427,19 @@ function Show-BackupStatus {
                     try {
                         $manifest = Get-Content $manifestPath | ConvertFrom-Json
                         $backupInfo = @{
-                            Path = $userFolder.FullName
-                            ParentPath = $path
-                            Manifest = $manifest
+                            Path         = $userFolder.FullName
+                            ParentPath   = $path
+                            Manifest     = $manifest
                             LastModified = $userFolder.LastWriteTime
-                            DriveInfo = Split-Path $path -Qualifier
+                            DriveInfo    = Split-Path $path -Qualifier
                         }
 
                         $allBackups += $backupInfo
                         if ($manifest.Username -eq $Username) {
                             $currentUserBackups += $backupInfo
                         }
-                    } catch {
+                    }
+                    catch {
                         $null
                     }
                 }
@@ -1447,10 +1486,12 @@ function Show-BackupStatus {
                 if (Test-Path $folderPath) {
                     $folderSize = try {
                         (Get-ChildItem -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue |
-                         Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
-                    } catch { 0 }
+                        Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum / 1MB
+                    }
+                    catch { 0 }
                     Write-Host "    + $folder ($([Math]::Round($folderSize, 1)) MB)" -ForegroundColor Green
-                } else {
+                }
+                else {
                     Write-Host "    - $folder (missing)" -ForegroundColor Red
                 }
             }

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Core Module - System Optimizer
@@ -864,5 +864,6 @@ Export-ModuleMember -Function @(
     # Download helper
     'Start-Download'
 )
+
 
 

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Registry Module - System Optimizer
@@ -244,3 +244,4 @@ function Set-RegistryOptimizations {
 Export-ModuleMember -Function @(
     'Set-RegistryOptimizations'
 )
+

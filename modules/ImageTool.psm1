@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     ImageTool Module - System Optimizer
@@ -78,8 +78,8 @@ Work Directory: $WorkDir
 
     # Cleanup old logs (keep last 30 days)
     Get-ChildItem -Path $LogDir -Filter "ImageTool_*.log" -ErrorAction SilentlyContinue |
-        Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
-        Remove-Item -Force -ErrorAction SilentlyContinue
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+    Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
 # Default work directory - can be changed via Settings menu to protect SSD
@@ -93,7 +93,8 @@ if (Test-Path $ConfigFile) {
         if ($config.WorkDir -and (Test-Path (Split-Path $config.WorkDir -Parent))) {
             $script:WorkDir = $config.WorkDir
         }
-    } catch { $null }
+    }
+    catch { $null }
 }
 
 $script:MountDir = "$WorkDir\Mount"
@@ -114,10 +115,10 @@ function Write-ImageLog {
     # Write to console with colors
     switch ($Type) {
         "SUCCESS" { Write-Host "[$shortTime] [OK] " -ForegroundColor Green -NoNewline; Write-Host $Message }
-        "ERROR"   { Write-Host "[$shortTime] [X] " -ForegroundColor Red -NoNewline; Write-Host $Message }
+        "ERROR" { Write-Host "[$shortTime] [X] " -ForegroundColor Red -NoNewline; Write-Host $Message }
         "WARNING" { Write-Host "[$shortTime] [!] " -ForegroundColor Yellow -NoNewline; Write-Host $Message }
         "SECTION" { Write-Host "`n[$shortTime] === " -ForegroundColor Cyan -NoNewline; Write-Host $Message -ForegroundColor Cyan -NoNewline; Write-Host " ===" -ForegroundColor Cyan }
-        default   { Write-Host "[$shortTime] [-] " -ForegroundColor Gray -NoNewline; Write-Host $Message }
+        default { Write-Host "[$shortTime] [-] " -ForegroundColor Gray -NoNewline; Write-Host $Message }
     }
 }
 
@@ -145,7 +146,8 @@ function Set-ConsoleSize {
             $windowSize.Height = $Height
             $Host.UI.RawUI.WindowSize = $windowSize
         }
-    } catch { $null }
+    }
+    catch { $null }
 }
 
 function Initialize-WorkDirectories {
@@ -236,7 +238,8 @@ function Invoke-ModuleMenuCommand {
                 & $CommandName
                 return $true
             }
-        } catch {
+        }
+        catch {
             Write-ImageLog "Failed to import $ModuleName from ${modulePath}: $($_.Exception.Message)" "WARNING"
         }
     }
@@ -258,7 +261,7 @@ function Show-SettingsMenu {
 
     # Get drive info
     $drives = Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -gt 0 } |
-        Select-Object Name, @{N='FreeGB';E={[math]::Round($_.Free/1GB,1)}}, @{N='UsedGB';E={[math]::Round($_.Used/1GB,1)}}
+    Select-Object Name, @{N = 'FreeGB'; E = { [math]::Round($_.Free / 1GB, 1) } }, @{N = 'UsedGB'; E = { [math]::Round($_.Used / 1GB, 1) } }
 
     Write-Host ""
     Write-Host "  Current Work Directory:" -ForegroundColor Cyan
@@ -382,7 +385,7 @@ function Show-SettingsMenu {
             Write-Host ""
             Write-Host "  Recent Log Files:" -ForegroundColor Cyan
             $logs = Get-ChildItem -Path $LogDir -Filter "*.log" -ErrorAction SilentlyContinue |
-                Sort-Object LastWriteTime -Descending | Select-Object -First 10
+            Sort-Object LastWriteTime -Descending | Select-Object -First 10
 
             if ($logs) {
                 $i = 1
@@ -404,7 +407,8 @@ function Show-SettingsMenu {
                         Get-Content $selectedLog.FullName -Tail 50
                     }
                 }
-            } else {
+            }
+            else {
                 Write-Host "    No log files found" -ForegroundColor Yellow
             }
         }
@@ -413,7 +417,8 @@ function Show-SettingsMenu {
             if (Test-Path $LogDir) {
                 Start-Process explorer.exe -ArgumentList $LogDir
                 Write-ImageLog "Opened log folder: $LogDir" "SUCCESS"
-            } else {
+            }
+            else {
                 Write-ImageLog "Log folder does not exist yet" "WARNING"
             }
         }
@@ -487,11 +492,13 @@ function Mount-WindowsISO {
         if ($driveLetter) {
             Write-ImageLog "ISO mounted at drive $driveLetter`:" "SUCCESS"
             return "${driveLetter}:"
-        } else {
+        }
+        else {
             Write-ImageLog "Failed to get drive letter" "ERROR"
             return $null
         }
-    } catch {
+    }
+    catch {
         Write-ImageLog "Error mounting ISO: $_" "ERROR"
         return $null
     }
@@ -520,7 +527,8 @@ function Copy-ISOContents {
     if (Test-Path $installWim) {
         attrib -R $installWim
         Write-ImageLog "ISO contents copied (WIM format)" "SUCCESS"
-    } elseif (Test-Path $installEsd) {
+    }
+    elseif (Test-Path $installEsd) {
         Write-ImageLog "ESD format detected - will convert to WIM" "WARNING"
     }
 
@@ -573,7 +581,8 @@ function Mount-WindowsWIM {
             Remove-Item $esdPath -Force
             $Index = 1  # After export, index becomes 1
             Write-ImageLog "Converted to WIM format" "SUCCESS"
-        } catch {
+        }
+        catch {
             dism /english /export-image /sourceimagefile:"$esdPath" /sourceindex:$Index /destinationimagefile:"$wimPath" /compress:max
             Remove-Item $esdPath -Force
             $Index = 1
@@ -591,7 +600,8 @@ function Mount-WindowsWIM {
         Mount-WindowsImage -ImagePath $wimPath -Index $Index -Path $ScratchDir
         Write-ImageLog "Image mounted at $ScratchDir" "SUCCESS"
         return $true
-    } catch {
+    }
+    catch {
         Write-ImageLog "Error mounting image: $_" "ERROR"
         return $false
     }
@@ -830,7 +840,8 @@ function Remove-ProvisionedPackages {
             try {
                 Remove-AppxProvisionedPackage -Path $ScratchDir -PackageName $pkg.PackageName -ErrorAction SilentlyContinue
                 Write-ImageLog "Removed: $($pkg.DisplayName)" "SUCCESS"
-            } catch {
+            }
+            catch {
                 Write-ImageLog "Could not remove: $($pkg.DisplayName)" "WARNING"
             }
         }
@@ -851,7 +862,8 @@ function Remove-WindowsFeatures {
         try {
             Disable-WindowsOptionalFeature -Path $ScratchDir -FeatureName $feature -Remove -ErrorAction SilentlyContinue
             Write-ImageLog "Disabled: $feature" "SUCCESS"
-        } catch {
+        }
+        catch {
             Write-ImageLog "Could not disable: $feature" "WARNING"
         }
     }
@@ -877,7 +889,8 @@ function Remove-BloatFolders {
             try {
                 Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
                 Write-ImageLog "Removed: $folder" "SUCCESS"
-            } catch {
+            }
+            catch {
                 Write-ImageLog "Could not remove: $folder" "WARNING"
             }
         }
@@ -907,10 +920,12 @@ function New-UnattendFile {
             $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($userPassword)
             try {
                 $userPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-            } finally {
+            }
+            finally {
                 [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
             }
-        } else {
+        }
+        else {
             Write-ImageLog "Password omitted from unattend.xml by user choice" "WARNING"
         }
     }
@@ -1063,7 +1078,8 @@ shortcut2.Save
         & cscript.exe //nologo $vbsPath
 
         Write-ImageLog "Desktop shortcut created in Default and Public profiles" "SUCCESS"
-    } catch {
+    }
+    catch {
         Write-ImageLog "Could not create shortcut: $($_.Exception.Message)" "WARNING"
     }
 }
@@ -1092,7 +1108,8 @@ function Save-ModifiedImage {
         dism /image:$ScratchDir /Cleanup-Image /StartComponentCleanup /ResetBase 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-ImageLog "Cleanup failed - continuing with save..." "WARNING"
-        } else {
+        }
+        else {
             Write-ImageLog "Cleanup completed" "SUCCESS"
         }
     }
@@ -1268,7 +1285,8 @@ function Optimize-WIMImage {
                             Write-ImageLog "Exporting $($img.ImageName)..."
                             Export-WindowsImage -SourceImagePath $esdPath -SourceIndex $img.ImageIndex -DestinationImagePath $wimPath -CompressionType Max
                         }
-                    } else {
+                    }
+                    else {
                         Write-ImageLog "Converting edition $index..."
                         Export-WindowsImage -SourceImagePath $esdPath -SourceIndex $index -DestinationImagePath $wimPath -CompressionType Max
                     }
@@ -1362,7 +1380,8 @@ function New-CustomISO {
         # Get file size
         $size = [math]::Round((Get-Item $outputISO).Length / 1GB, 2)
         Write-Host "ISO Size: $size GB" -ForegroundColor Cyan
-    } else {
+    }
+    else {
         Write-ImageLog "ISO creation failed with exit code $($process.ExitCode)" "ERROR"
     }
 }
@@ -1414,7 +1433,8 @@ function New-BootableUSB {
         "1" {
             if (Test-Path "$MountDir\sources\install.wim") {
                 $sourcePath = $MountDir
-            } else {
+            }
+            else {
                 Write-ImageLog "No modified image found in work directory" "ERROR"
                 return
             }
@@ -1523,7 +1543,8 @@ function Get-Oscdimg {
     try {
         Invoke-WebRequest -Uri $oscdimgUrl -OutFile $oscdimgPath -UseBasicParsing
         Write-ImageLog "oscdimg.exe downloaded" "SUCCESS"
-    } catch {
+    }
+    catch {
         Write-ImageLog "Failed to download oscdimg.exe: $_" "ERROR"
         Write-Host ""
         Write-Host "You can manually download oscdimg.exe from:" -ForegroundColor Yellow
@@ -1546,7 +1567,8 @@ function Clear-WorkDirectories {
         # Unmount any mounted images first
         try {
             Dismount-WindowsImage -Path $ScratchDir -Discard -ErrorAction SilentlyContinue
-        } catch { $null }
+        }
+        catch { $null }
 
         # Unmount any mounted ISOs
         Get-DiskImage | Where-Object { $_.ImagePath -like "*.iso" } | Dismount-DiskImage -ErrorAction SilentlyContinue
@@ -1556,7 +1578,8 @@ function Clear-WorkDirectories {
             Remove-Item -Path $WorkDir -Recurse -Force
             Write-ImageLog "Work directories cleaned" "SUCCESS"
         }
-    } else {
+    }
+    else {
         Write-ImageLog "Cleanup cancelled" "WARNING"
     }
 }
@@ -1568,7 +1591,8 @@ function Show-MountedImages {
 
     if ($mounted.Count -eq 0) {
         Write-Host "No Windows images currently mounted" -ForegroundColor Yellow
-    } else {
+    }
+    else {
         foreach ($img in $mounted) {
             Write-Host ""
             Write-Host "Path: $($img.Path)" -ForegroundColor Cyan

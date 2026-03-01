@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     First-Run Warning and Consent System
 
@@ -227,3 +227,4 @@ function Show-FirstRunWarning {
 
 # Export functions
 Export-ModuleMember -Function Show-FirstRunWarning, Test-FirstRunComplete, Set-FirstRunComplete, Reset-FirstRunWarning
+

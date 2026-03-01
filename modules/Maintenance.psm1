@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # Maintenance Module - System Optimizer
 # ============================================================================
 # This module provides comprehensive system maintenance and repair tools.
@@ -1759,3 +1759,4 @@ Export-ModuleMember -Function @(
     'Start-StartupProgramManager',
     'Start-MaintenanceMenu'
 )
+
