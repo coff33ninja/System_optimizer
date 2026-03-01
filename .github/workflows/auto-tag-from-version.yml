@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: auto-tag-from-version
@@ -111,3 +112,12 @@ jobs:
           git push origin $tag
           Write-Host "Pushed tag $tag"
 
+      - name: Trigger release workflow for tag
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ steps.version.outputs.TAG }}"
+          gh workflow run release.yml --ref $tag
+          Write-Host "Triggered release workflow for $tag"
