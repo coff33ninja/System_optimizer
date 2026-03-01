@@ -347,8 +347,8 @@ function Update-ModulesFromGitHub {
 # Function to Module mapping for validation
 $script:FunctionModuleMap = @{
     # Core Modules
-    'Run-AllOptimizations' = 'Core'
-    'Run-FullSetup' = 'Core'
+    'Start-AllOptimization' = 'Core'
+    'Start-FullSetup' = 'Core'
     'Start-Download' = 'Core'
     
     # Warning System
@@ -699,8 +699,8 @@ function Show-MainMenu {
     
     # Quick Actions (Full Width)
     Write-Host "  Quick Actions:" -ForegroundColor Green
-    Write-MenuItem "1" "Run ALL Optimizations       " "Apply all optimizations" 'Run-AllOptimizations'
-    Write-MenuItem "16" "Full Setup                  " "Software + Office + Activation" 'Run-FullSetup'
+    Write-MenuItem "1" "Run ALL Optimizations       " "Apply all optimizations" 'Start-AllOptimization'
+    Write-MenuItem "16" "Full Setup                  " "Software + Office + Activation" 'Start-FullSetup'
     Write-Host ""
     
     # Two-Column Layout for remaining options
@@ -795,7 +795,7 @@ function Start-MainMenu {
         $choice = Read-Host "Select option"
         
         switch ($choice) {
-            "1"  { Invoke-OptFunction 'Run-AllOptimizations' }
+            "1"  { Invoke-OptFunction 'Start-AllOptimization' }
             "2"  { Invoke-OptFunction 'Disable-Telemetry' }
             "3"  { Invoke-OptFunction 'Show-ServicesMenu' }
             "4"  { Invoke-OptFunction 'DebloatBlacklist' }           # Bloatware.psm1
@@ -810,7 +810,7 @@ function Start-MainMenu {
             "13" { Invoke-OptFunction 'Start-MAS' }
             "14" { Invoke-OptFunction 'Get-WifiPasswords' }
             "15" { Invoke-OptFunction 'Test-OptimizationStatus' }
-            "16" { Invoke-OptFunction 'Run-FullSetup' }
+            "16" { Invoke-OptFunction 'Start-FullSetup' }
             "17" { Invoke-OptFunction 'Set-PowerPlan' }
             "18" { Invoke-OptFunction 'Start-OOShutUp10' }
             "19" { Invoke-OptFunction 'Set-WindowsUpdateControl' }
@@ -871,7 +871,7 @@ if (-not $SkipModuleLoad) {
     if (-not $loaded) {
         Write-Host ""
         Write-Host "Modules not loaded. Check modules folder exists." -ForegroundColor Yellow
-        Write-Host "Or use the original: .\win11_ultimate_optimization.ps1" -ForegroundColor Yellow
+        Write-Host "Or use the original: .\scripts\legacy\win11_ultimate_optimization.ps1" -ForegroundColor Yellow
         Write-Host ""
         $continue = Read-Host "Continue anyway? (y/N)"
         if ($continue -ne 'y' -and $continue -ne 'Y') {
@@ -909,7 +909,7 @@ if (-not $RunOption) {
 if ($RunOption) {
     $optMap = @{
         # Core Optimizations
-        'all' = 'Run-AllOptimizations'
+        'all' = 'Start-AllOptimization'
         'telemetry' = 'Disable-Telemetry'
         'services' = 'Show-ServicesMenu'
         'bloatware' = 'DebloatBlacklist'

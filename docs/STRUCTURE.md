@@ -15,7 +15,7 @@ System_Optimizer/
 │   ├── PatchMyPC.ini            # Pre-selected software list
 │   └── winget_packages.json     # Winget package definitions
 │
-├── modules/                     # 27 PowerShell modules
+├── modules/                     # 29 PowerShell modules
 │   └── [see Module Reference below]
 │
 ├── scripts/                     # Build and development scripts
@@ -94,7 +94,7 @@ System_Optimizer/
 | **Installer.psm1** | 18 | Windows deployment to drives |
 | **VHDDeploy.psm1** | 15 | VHD native boot deployment |
 
-**Total: 27 modules, 223+ functions**
+**Total: 29 modules, 223+ functions**
 
 ---
 

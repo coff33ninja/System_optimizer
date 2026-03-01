@@ -62,6 +62,25 @@ jobs:
             version = "${{ steps.version.outputs.VERSION }}"
             verbose = $true
           }
+
+          $modulesDir = "modules"
+          if (-not (Test-Path $modulesDir)) {
+            Write-Error "Modules directory not found: $modulesDir"
+            exit 1
+          }
+
+          $moduleFiles = Get-ChildItem -Path $modulesDir -Filter "*.psm1"
+          if (-not $moduleFiles -or $moduleFiles.Count -eq 0) {
+            Write-Error "No module files found to embed"
+            exit 1
+          }
+
+          $embedFiles = @{}
+          foreach ($moduleFile in $moduleFiles) {
+            $embedFiles[".\modules\$($moduleFile.Name)"] = $moduleFile.FullName
+          }
+          $ps2exeParams['embedFiles'] = $embedFiles
+          Write-Host "Embedding $($moduleFiles.Count) modules" -ForegroundColor Green
           
           # Add icon if it exists
           if (Test-Path "icon.ico") {

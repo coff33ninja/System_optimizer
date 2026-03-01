@@ -1,6 +1,6 @@
 # System Optimizer 🛠️
 
-A comprehensive Windows 10/11 optimization toolkit - 27 modules, 34 menu options, one EXE.
+A comprehensive Windows 10/11 optimization toolkit - 29 modules, 34 menu options, one EXE.
 
 > Replaces [AIO](https://github.com/coff33ninja/AIO) (archived) and [NexTool](https://github.com/coff33ninja/NexTool-Windows-Suite) (discontinued).
 

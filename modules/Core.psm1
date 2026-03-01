@@ -768,7 +768,7 @@ function Start-AllOptimization {
 
     Disable-Telemetry
     Disable-Services
-    Remove-BloatwareApps
+    DebloatBlacklist
     Disable-ScheduledTasks
     Set-RegistryOptimizations
     Disable-VBS
@@ -777,7 +777,7 @@ function Start-AllOptimization {
     # Save rollback session
     if (Get-Command 'Save-RollbackSession' -ErrorAction SilentlyContinue) {
         Save-RollbackSession
-        Write-Host "[Rollback] Undo script saved - use menu option [36] to rollback" -ForegroundColor DarkGray
+        Write-Host "[Rollback] Undo script saved - use menu option [32] to rollback" -ForegroundColor DarkGray
     }
 
     Write-Host ""
@@ -851,7 +851,7 @@ function Start-MainMenu {
             "1" { Start-AllOptimization }
             "2" { Disable-Telemetry }
             "3" { Disable-Services }
-            "4" { Remove-BloatwareApps }
+            "4" { DebloatBlacklist }
             "5" { Disable-ScheduledTasks }
             "6" { Set-RegistryOptimizations }
             "7" { Disable-VBS }

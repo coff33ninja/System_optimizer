@@ -20,6 +20,7 @@ jobs:
           if ($results) {
             $results | Format-Table -AutoSize
             Write-Host "Found $($results.Count) issues"
+            exit 1
           } else {
             Write-Host "No issues found!"
           }
