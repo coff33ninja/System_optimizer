@@ -95,6 +95,10 @@ $script:Config = @{
     Version = $VersionInfo.Version
     ReleaseTag = $VersionInfo.ReleaseTag
     Root = $scriptRoot
+    IsEmbeddedEXE = $isEmbeddedEXE
+    PersistentRoot = "C:\System_Optimizer"
+    PersistentModulesDir = "C:\System_Optimizer\modules"
+    PersistentVersionPath = "C:\System_Optimizer\version.psd1"
     ModulesDir = if ($isEmbeddedEXE) { ".\modules" } else { "$scriptRoot\modules" }
     LogDir = "C:\System_Optimizer\Logs"
     BackupDir = "C:\System_Optimizer_Backup"
@@ -169,6 +173,179 @@ function Invoke-TrustedGitHubRawDownload {
     }
 }
 
+function Get-CurrentExecutablePath {
+    try {
+        $procPath = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+        if ($procPath -and ($procPath -like "*.exe") -and (Test-Path $procPath)) {
+            return $procPath
+        }
+    } catch {
+        $null
+    }
+    return $null
+}
+
+function Invoke-TrustedGitHubReleaseDownload {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Url,
+        [Parameter(Mandatory)]
+        [string]$OutFile,
+        [int]$TimeoutSec = 60
+    )
+
+    $uri = [Uri]$Url
+    if ($uri.Scheme -ne "https") {
+        throw "Only HTTPS downloads are allowed: $Url"
+    }
+    if ($uri.Host -ne "github.com") {
+        throw "Only github.com is allowed for release downloads: $($uri.Host)"
+    }
+
+    $outDir = Split-Path -Parent $OutFile
+    if ($outDir -and -not (Test-Path $outDir)) {
+        New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+    }
+
+    Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -TimeoutSec $TimeoutSec -ErrorAction Stop
+    if (-not (Test-Path $OutFile)) {
+        throw "Expected file was not downloaded: $OutFile"
+    }
+}
+
+function Get-SystemOptimizerReleaseExeUrl {
+    param([Parameter(Mandatory)][string]$Version)
+    $tag = "v$Version"
+    return "https://github.com/$($Config.GitHubRepo)/releases/download/$tag/SystemOptimizer.exe"
+}
+
+function Initialize-ModuleCache {
+    $sourceModulesPath = $Config.ModulesDir
+    $targetModulesPath = $Config.PersistentModulesDir
+    $targetVersionFile = Join-Path $targetModulesPath ".version"
+    $currentVersion = $Config.Version
+
+    if (-not (Test-Path $sourceModulesPath)) {
+        return
+    }
+
+    $sourceModules = Get-ChildItem -Path $sourceModulesPath -Filter "*.psm1" -ErrorAction SilentlyContinue
+    if (-not $sourceModules -or $sourceModules.Count -eq 0) {
+        return
+    }
+
+    $cachedVersion = if (Test-Path $targetVersionFile) {
+        (Get-Content $targetVersionFile -ErrorAction SilentlyContinue | Select-Object -First 1)
+    } else {
+        ""
+    }
+
+    if ((Test-Path $targetModulesPath) -and ($cachedVersion -eq $currentVersion)) {
+        if ($Config.IsEmbeddedEXE) {
+            $script:Config.ModulesDir = $targetModulesPath
+            Write-Log "Using persistent module cache v$cachedVersion from $targetModulesPath" "INFO"
+        }
+        return
+    }
+
+    $stagingPath = "$targetModulesPath.new"
+    $backupPath = "$targetModulesPath.bak"
+
+    try {
+        New-Item -ItemType Directory -Path $Config.PersistentRoot -Force | Out-Null
+        Remove-Item -Path $stagingPath -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path $stagingPath -Force | Out-Null
+
+        foreach ($module in $sourceModules) {
+            Copy-Item -Path $module.FullName -Destination (Join-Path $stagingPath $module.Name) -Force -ErrorAction Stop
+        }
+        $currentVersion | Out-File (Join-Path $stagingPath ".version") -Force
+
+        Remove-Item -Path $backupPath -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path $targetModulesPath) {
+            Rename-Item -Path $targetModulesPath -NewName (Split-Path $backupPath -Leaf) -ErrorAction Stop
+        }
+        Rename-Item -Path $stagingPath -NewName (Split-Path $targetModulesPath -Leaf) -ErrorAction Stop
+        Remove-Item -Path $backupPath -Recurse -Force -ErrorAction SilentlyContinue
+
+        Write-Log "Cached modules to $targetModulesPath (v$currentVersion)" "SUCCESS"
+        if ($Config.IsEmbeddedEXE) {
+            $script:Config.ModulesDir = $targetModulesPath
+            Write-Log "Switched EXE module source to persistent cache" "INFO"
+        }
+    } catch {
+        Remove-Item -Path $stagingPath -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Log "Failed to initialize module cache: $($_.Exception.Message)" "WARNING"
+    }
+}
+
+function Start-ExecutableInPlaceUpdate {
+    param([Parameter(Mandatory)][string]$Version)
+
+    if (-not $Config.IsEmbeddedEXE) {
+        return $false
+    }
+
+    $currentExePath = Get-CurrentExecutablePath
+    if (-not $currentExePath) {
+        Write-Log "Could not detect current EXE path; skipping EXE self-update." "WARNING"
+        return $false
+    }
+
+    $downloadPath = "$currentExePath.new"
+    $updaterPath = Join-Path $env:TEMP "SystemOptimizer\apply-exe-update.ps1"
+    $releaseUrl = Get-SystemOptimizerReleaseExeUrl -Version $Version
+
+    try {
+        Invoke-TrustedGitHubReleaseDownload -Url $releaseUrl -OutFile $downloadPath -TimeoutSec 120
+        if ((Get-Item $downloadPath).Length -le 0) {
+            throw "Downloaded EXE is empty."
+        }
+
+        $updaterDir = Split-Path -Parent $updaterPath
+        if (-not (Test-Path $updaterDir)) {
+            New-Item -ItemType Directory -Path $updaterDir -Force | Out-Null
+        }
+
+        $updaterScript = @'
+param(
+    [Parameter(Mandatory)][string]$TargetExe,
+    [Parameter(Mandatory)][string]$NewExe
+)
+
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        if (Test-Path $TargetExe) {
+            Remove-Item -Path $TargetExe -Force -ErrorAction Stop
+        }
+        Move-Item -Path $NewExe -Destination $TargetExe -Force -ErrorAction Stop
+        exit 0
+    } catch {
+        Start-Sleep -Seconds 1
+    }
+}
+
+exit 1
+'@
+        Set-Content -Path $updaterPath -Value $updaterScript -Encoding UTF8
+
+        Start-Process -FilePath "powershell.exe" -ArgumentList @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", "`"$updaterPath`"",
+            "-TargetExe", "`"$currentExePath`"",
+            "-NewExe", "`"$downloadPath`""
+        ) -WindowStyle Hidden
+
+        Write-Log "EXE update staged for in-place replacement at exit: $currentExePath" "SUCCESS"
+        return $true
+    } catch {
+        Remove-Item -Path $downloadPath -Force -ErrorAction SilentlyContinue
+        Write-Log "Failed to stage EXE update: $($_.Exception.Message)" "WARNING"
+        return $false
+    }
+}
+
 function Get-SystemOptimizerModuleList {
     return @(
         'Backup','Bloatware','Core','Drivers','Hardware','Help','ImageTool','Installer',
@@ -195,7 +372,8 @@ function Update-SystemOptimizer {
         if ($response -notmatch '^[Yy]') { return $false }
     }
     
-    $persistentPath = "C:\System_Optimizer"
+    $persistentPath = $Config.PersistentRoot
+    $scheduledExeUpdate = $false
     
     try {
         # Download main script
@@ -221,10 +399,17 @@ function Update-SystemOptimizer {
         if (-not $updatedPath) {
             throw "Module update failed. Existing modules were preserved."
         }
+
+        if ($Config.IsEmbeddedEXE) {
+            $scheduledExeUpdate = Start-ExecutableInPlaceUpdate -Version $update.Latest
+        }
         
         Write-Host ""
         Write-Host "[+] Update complete! Restart to use v$($update.Latest)" -ForegroundColor Green
         Write-Host "    Run: C:\System_Optimizer\Start-SystemOptimizer.ps1" -ForegroundColor Cyan
+        if ($scheduledExeUpdate) {
+            Write-Host "    EXE update staged. Close System Optimizer to finalize in-place replacement." -ForegroundColor Cyan
+        }
         return $true
     } catch {
         Write-Host "[-] Update failed: $($_.Exception.Message)" -ForegroundColor Red
@@ -339,8 +524,8 @@ function Set-ConsoleSize {
 # MODULE LOADER
 # ============================================================================
 function Import-OptimizerModules {
-    $persistentModulesPath = "C:\System_Optimizer\modules"
-    $versionFile = "C:\System_Optimizer\modules\.version"
+    $persistentModulesPath = $Config.PersistentModulesDir
+    $versionFile = Join-Path $persistentModulesPath ".version"
     $currentVersion = $Config.Version
     
     # Check if we should use local modules first
@@ -977,6 +1162,7 @@ function Start-MainMenu {
 # ============================================================================
 Initialize-Logging
 Write-Log "System Optimizer v$($Config.Version) starting" "SECTION"
+Initialize-ModuleCache
 
 # Load modules
 if (-not $SkipModuleLoad) {
