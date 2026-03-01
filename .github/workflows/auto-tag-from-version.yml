@@ -1,0 +1,113 @@
+name: Auto Tag From Version
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'version.psd1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-tag-from-version
+  cancel-in-progress: false
+
+jobs:
+  auto-tag:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from version.psd1
+        id: version
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ".\version.psd1")) {
+            throw "version.psd1 not found."
+          }
+
+          $versionData = Import-PowerShellDataFile -Path ".\version.psd1"
+          if (-not $versionData.Version) {
+            throw "version.psd1 is missing Version."
+          }
+
+          $version = [string]$versionData.Version
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "version.psd1 Version is invalid: $version"
+          }
+
+          $tag = "v$version"
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Check whether tag already exists
+        id: tagcheck
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.version.outputs.TAG }}"
+          git fetch --tags --force
+          $existing = git tag -l $tag
+          if ($existing) {
+            echo "EXISTS=true" >> $env:GITHUB_OUTPUT
+            Write-Host "Tag $tag already exists. Nothing to do."
+          } else {
+            echo "EXISTS=false" >> $env:GITHUB_OUTPUT
+            Write-Host "Tag $tag does not exist. Preparing release metadata."
+          }
+
+      - name: Sync version metadata and stamp module headers
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        shell: pwsh
+        run: |
+          .\scripts\sync-version.ps1 -Version "${{ steps.version.outputs.VERSION }}"
+          .\scripts\stamp-version.ps1 -Version "${{ steps.version.outputs.VERSION }}"
+
+      - name: Generate changelog entry from commits
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        shell: pwsh
+        run: |
+          .\scripts\generate-changelog-entry.ps1 -Version "${{ steps.version.outputs.VERSION }}"
+
+      - name: Commit metadata updates if needed
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          if (git diff --cached --quiet) {
+            Write-Host "No metadata updates to commit."
+          } else {
+            git commit -m "chore(release): sync version metadata and changelog for ${{ steps.version.outputs.TAG }} [skip ci]"
+            git push origin HEAD:main
+          }
+
+      - name: Create and push version tag
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.version.outputs.TAG }}"
+
+          git fetch origin main --prune
+          git checkout main
+          git pull --ff-only origin main
+
+          $existing = git tag -l $tag
+          if ($existing) {
+            Write-Host "Tag $tag was created during update step. Skipping."
+            exit 0
+          }
+
+          git tag -a $tag -m "Release $tag"
+          git push origin $tag
+          Write-Host "Pushed tag $tag"
+
