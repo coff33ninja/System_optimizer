@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     ImageTool Module - System Optimizer
@@ -38,7 +38,7 @@ Work Directory:
 
 Requires Admin: Yes
 
-Version: 2.0.3
+Version: 2.0.4
 #>
 # Inspired by WinUtil MicroWin and NexTool Windows Install
 # ============================================================================

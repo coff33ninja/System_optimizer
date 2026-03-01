@@ -23,7 +23,7 @@ Safety:
 
 Requires Admin: Yes
 
-Version: 2.0.3
+Version: 2.0.4
 #>
 
 function Remove-OneDrive {

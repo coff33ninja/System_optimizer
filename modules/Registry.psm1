@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Registry Module - System Optimizer
@@ -33,7 +33,7 @@ Registry Areas:
 
 Requires Admin: Yes
 
-Version: 2.0.3
+Version: 2.0.4
 #>
 
 function Set-RegistryOptimizations {

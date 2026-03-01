@@ -83,8 +83,8 @@ function Get-SystemOptimizerVersionInfo {
     }
 
     return @{
-        Version = "2.0.3"
-        ReleaseTag = "v2.0.3"
+        Version = "2.0.4"
+        ReleaseTag = "v2.0.4"
         Source = "fallback"
     }
 }

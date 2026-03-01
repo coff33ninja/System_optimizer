@@ -36,7 +36,7 @@ Work Directory:
 
 Requires Admin: Yes
 
-Version: 2.0.3
+Version: 2.0.4
 #>
 # ============================================================================
 # WARNING: This script will ERASE data on selected disks!
@@ -73,8 +73,8 @@ function Get-SystemOptimizerVersionInfo {
     }
 
     return @{
-        Version = "2.0.3"
-        ReleaseTag = "v2.0.3"
+        Version = "2.0.4"
+        ReleaseTag = "v2.0.4"
     }
 }
 

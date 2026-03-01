@@ -2,6 +2,11 @@
 
 All notable changes to System Optimizer will be documented in this file.
 
+## [2.0.4] - 2026-03-01
+
+### Changes
+- fix(ps51): restore BOM module compatibility and force EXE cache refresh
+
 ## [2.0.3] - 2026-03-01
 
 ### Changes

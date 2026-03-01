@@ -24,7 +24,7 @@ Warning:
 
 Requires Admin: Yes
 
-Version: 2.0.3
+Version: 2.0.4
 #>
 
 $script:VersionInfo = $null
@@ -55,8 +55,8 @@ function Get-SystemOptimizerVersionInfo {
     }
 
     return @{
-        Version = "2.0.3"
-        ReleaseTag = "v2.0.3"
+        Version = "2.0.4"
+        ReleaseTag = "v2.0.4"
     }
 }
 

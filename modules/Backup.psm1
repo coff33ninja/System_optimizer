@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Backup Module - System Optimizer
@@ -33,7 +33,7 @@ Backup Location:
 
 Requires Admin: No
 
-Version: 2.0.3
+Version: 2.0.4
 #>
 # ============================================================================
 
@@ -68,7 +68,7 @@ function Get-SystemOptimizerVersion {
             $null
         }
     }
-    $script:SystemOptimizerVersion = "2.0.3"
+    $script:SystemOptimizerVersion = "2.0.4"
     return $script:SystemOptimizerVersion
 }
 

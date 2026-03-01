@@ -32,7 +32,7 @@ Integration:
 
 Requires Admin: No
 
-Version: 2.0.3
+Version: 2.0.4
 #>
 
 # Cache for parsed menu data
@@ -66,8 +66,8 @@ function Get-SystemOptimizerVersionInfo {
     }
 
     return @{
-        Version = "2.0.3"
-        ReleaseTag = "v2.0.3"
+        Version = "2.0.4"
+        ReleaseTag = "v2.0.4"
     }
 }
 

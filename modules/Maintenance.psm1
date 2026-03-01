@@ -1,4 +1,4 @@
-﻿# ============================================================================
+# ============================================================================
 # Maintenance Module - System Optimizer
 # ============================================================================
 # This module provides comprehensive system maintenance and repair tools.
@@ -43,7 +43,7 @@
 #
 # ============================================================================
 
-# Version: 2.0.3
+# Version: 2.0.4
 function Start-SystemMaintenance {
     Write-Log "RUNNING SYSTEM MAINTENANCE" "SECTION"
 

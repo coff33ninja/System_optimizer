@@ -36,7 +36,7 @@ Backup:
 
 Requires Admin: Yes
 
-Version: 2.0.3
+Version: 2.0.4
 #>
 
 function Disable-Services {
