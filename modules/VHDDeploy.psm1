@@ -54,7 +54,25 @@ $script:DriverDir = "$WorkDir\Drivers"
 $script:LogDir = "C:\System_Optimizer\Logs"
 $script:LogFile = $null
 
+function Get-VHDLoggerCommand {
+    $logger = Get-Command 'Write-Log' -ErrorAction SilentlyContinue
+    if (-not $logger) {
+        $logger = Get-Command 'Write-OptLog' -ErrorAction SilentlyContinue
+    }
+    return $logger
+}
+
 function Initialize-VHDLogging {
+    $optInit = Get-Command 'Logging\Initialize-Logging' -ErrorAction SilentlyContinue
+    if ($optInit) {
+        try {
+            $script:LogFile = & $optInit -ComponentName "VHDDeploy" -CustomLogDir $LogDir
+            return
+        } catch {
+            $null
+        }
+    }
+
     if (-not (Test-Path $LogDir)) {
         New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
     }
@@ -75,10 +93,20 @@ Computer: $env:COMPUTERNAME
 
 function Write-VHDLog {
     param([string]$Message, [string]$Type = "INFO")
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $shortTime = Get-Date -Format "HH:mm:ss"
+
+    $logger = Get-VHDLoggerCommand
+    if ($logger) {
+        & $logger -Message $Message -Type $Type
+        return
+    }
+
+    if (-not $LogFile) {
+        Initialize-VHDLogging
+    }
 
     # Write to log file
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $shortTime = Get-Date -Format "HH:mm:ss"
     if ($LogFile) {
         Add-Content -Path $LogFile -Value "[$timestamp] [$Type] $Message" -ErrorAction SilentlyContinue
     }

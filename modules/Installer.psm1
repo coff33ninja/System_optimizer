@@ -88,7 +88,25 @@ $script:DiskpartDir = "$WorkDir\Diskpart"
 $script:LogDir = "C:\System_Optimizer\Logs"
 $script:LogFile = $null
 
+function Get-InstallerLoggerCommand {
+    $logger = Get-Command 'Write-Log' -ErrorAction SilentlyContinue
+    if (-not $logger) {
+        $logger = Get-Command 'Write-OptLog' -ErrorAction SilentlyContinue
+    }
+    return $logger
+}
+
 function Initialize-InstallerLogging {
+    $optInit = Get-Command 'Logging\Initialize-Logging' -ErrorAction SilentlyContinue
+    if ($optInit) {
+        try {
+            $script:LogFile = & $optInit -ComponentName "Installer" -CustomLogDir $LogDir
+            return
+        } catch {
+            $null
+        }
+    }
+
     if (-not (Test-Path $LogDir)) {
         New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
     }
@@ -110,10 +128,20 @@ WARNING: This tool can ERASE disks!
 
 function Write-InstallerLog {
     param([string]$Message, [string]$Type = "INFO")
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $shortTime = Get-Date -Format "HH:mm:ss"
+
+    $logger = Get-InstallerLoggerCommand
+    if ($logger) {
+        & $logger -Message $Message -Type $Type
+        return
+    }
+
+    if (-not $LogFile) {
+        Initialize-InstallerLogging
+    }
 
     # Write to log file
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $shortTime = Get-Date -Format "HH:mm:ss"
     if ($LogFile) {
         Add-Content -Path $LogFile -Value "[$timestamp] [$Type] $Message" -ErrorAction SilentlyContinue
     }

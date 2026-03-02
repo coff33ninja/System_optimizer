@@ -40,16 +40,22 @@ function script:Write-UITweaksLog {
         [string]$Message,
         [string]$Type = "INFO"
     )
-    if (Get-Command 'Write-Log' -ErrorAction SilentlyContinue) {
-        Write-Log $Message $Type
-    } else {
-        switch ($Type) {
-            "SUCCESS" { Write-Host "  [OK] $Message" -ForegroundColor Green }
-            "WARNING" { Write-Host "  [!] $Message" -ForegroundColor Yellow }
-            "ERROR"   { Write-Host "  [X] $Message" -ForegroundColor Red }
-            "SECTION" { Write-Host "`n=== $Message ===" -ForegroundColor Cyan }
-            default   { Write-Host "  [-] $Message" }
-        }
+    $logger = Get-Command 'Write-Log' -ErrorAction SilentlyContinue
+    if (-not $logger) {
+        $logger = Get-Command 'Write-OptLog' -ErrorAction SilentlyContinue
+    }
+
+    if ($logger) {
+        & $logger -Message $Message -Type $Type
+        return
+    }
+
+    switch ($Type) {
+        "SUCCESS" { Write-Host "  [OK] $Message" -ForegroundColor Green }
+        "WARNING" { Write-Host "  [!] $Message" -ForegroundColor Yellow }
+        "ERROR"   { Write-Host "  [X] $Message" -ForegroundColor Red }
+        "SECTION" { Write-Host "`n=== $Message ===" -ForegroundColor Cyan }
+        default   { Write-Host "  [-] $Message" }
     }
 }
 

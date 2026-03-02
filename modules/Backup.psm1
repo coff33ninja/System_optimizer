@@ -39,7 +39,6 @@ Version: 2.0.4
 
 
 # Import logging and progress functions if available
-$script:HasWriteLog = Get-Command Write-Log -ErrorAction SilentlyContinue
 $script:HasProgress = Get-Command Start-ProgressOperation -ErrorAction SilentlyContinue
 $script:SystemOptimizerVersion = $null
 
@@ -75,8 +74,13 @@ function Get-SystemOptimizerVersion {
 function Write-BackupLog {
     param([string]$Message, [string]$Type = "INFO")
 
-    if ($script:HasWriteLog) {
-        & $script:HasWriteLog -Message $Message -Type $Type
+    $logger = Get-Command Write-Log -ErrorAction SilentlyContinue
+    if (-not $logger) {
+        $logger = Get-Command Write-OptLog -ErrorAction SilentlyContinue
+    }
+
+    if ($logger) {
+        & $logger -Message $Message -Type $Type
         return
     }
 

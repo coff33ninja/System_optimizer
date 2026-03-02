@@ -10,8 +10,8 @@ Exported Functions:
     Get-WifiPasswords           - Extract saved Wi-Fi passwords
     Test-OptimizationStatus     - Check current optimization status
     Show-LogViewer              - Interactive log viewer
-    Initialize-Logging          - Initialize logging (compatibility)
-    Write-UtilitiesLog                   - Write log entry (wrapper)
+    Initialize-UtilitiesLogging - Initialize Utilities logging
+    Write-UtilitiesLog          - Write log entry (wrapper)
     Set-ConsoleSize             - Set console window dimensions
     Show-Menu                   - Display formatted menu
 
@@ -27,6 +27,19 @@ Dependencies:
 
 Version: 2.0.4
 #>
+
+$script:LogDir = if ($script:LogDir) { $script:LogDir } else { "C:\System_Optimizer\Logs" }
+$script:LogFile = if ($script:LogFile) { $script:LogFile } else { $null }
+$script:ConsoleWidth = if ($script:ConsoleWidth) { $script:ConsoleWidth } else { 90 }
+$script:ConsoleHeight = if ($script:ConsoleHeight) { $script:ConsoleHeight } else { 38 }
+
+function Get-UtilitiesLoggerCommand {
+    $logger = Get-Command 'Write-Log' -ErrorAction SilentlyContinue
+    if (-not $logger) {
+        $logger = Get-Command 'Write-OptLog' -ErrorAction SilentlyContinue
+    }
+    return $logger
+}
 
 function Get-WifiPasswords {
     Write-UtilitiesLog "EXTRACTING WI-FI PASSWORDS" "SECTION"
@@ -268,7 +281,17 @@ LOG FILES IN $LogDir`:
     }
 }
 
-function Initialize-Logging {
+function Initialize-UtilitiesLogging {
+    $optInit = Get-Command 'Logging\Initialize-Logging' -ErrorAction SilentlyContinue
+    if ($optInit) {
+        try {
+            $script:LogFile = & $optInit -ComponentName "Utilities"
+            return
+        } catch {
+            $null
+        }
+    }
+
     # Ensure log directory exists
     if (-not (Test-Path $LogDir)) {
         New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
@@ -299,12 +322,26 @@ PowerShell: $($PSVersionTable.PSVersion)
         Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
+function Initialize-Logging {
+    Initialize-UtilitiesLogging
+}
+
 function Write-UtilitiesLog {
     param([string]$Message, [string]$Type = "INFO")
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $shortTime = Get-Date -Format "HH:mm:ss"
+
+    $logger = Get-UtilitiesLoggerCommand
+    if ($logger) {
+        & $logger -Message $Message -Type $Type
+        return
+    }
+
+    if (-not $LogFile) {
+        Initialize-UtilitiesLogging
+    }
 
     # Write to log file
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $shortTime = Get-Date -Format "HH:mm:ss"
     $logMessage = "[$timestamp] [$Type] $Message"
     if ($LogFile) {
         Add-Content -Path $LogFile -Value $logMessage -ErrorAction SilentlyContinue
@@ -414,7 +451,7 @@ Export-ModuleMember -Function @(
     'Get-WifiPasswords',
     'Test-OptimizationStatus',
     'Show-LogViewer',
-    'Initialize-Logging',
+    'Initialize-UtilitiesLogging',
     'Write-UtilitiesLog',
     'Set-ConsoleSize',
     'Show-Menu'

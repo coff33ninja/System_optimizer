@@ -150,6 +150,20 @@ function Write-OptLog {
     }
 }
 
+# Compatibility wrapper used by legacy modules and the main script.
+function Write-Log {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Message,
+        [ValidateSet("INFO", "SUCCESS", "ERROR", "WARNING", "SECTION", "DEBUG")]
+        [string]$Type = "INFO",
+        [switch]$NoConsole,
+        [switch]$NoFile
+    )
+
+    Write-OptLog -Message $Message -Type $Type -NoConsole:$NoConsole -NoFile:$NoFile
+}
+
 # Log an error with exception details
 function Write-OptError {
     param(
@@ -298,6 +312,7 @@ Completed: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 Export-ModuleMember -Function @(
     'Initialize-Logging',
     'Remove-OldLogs',
+    'Write-Log',
     'Write-OptLog',
     'Write-OptError',
     'Write-OptCommand',

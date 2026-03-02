@@ -450,7 +450,48 @@ if ($Help) {
 # ============================================================================
 # LOGGING
 # ============================================================================
+function Resolve-LoggingCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandName
+    )
+
+    $qualifiedName = "Logging\$CommandName"
+    $resolved = Get-Command $qualifiedName -ErrorAction SilentlyContinue
+    if ($resolved) {
+        return $resolved
+    }
+
+    $candidatePaths = @(
+        (Join-Path $Config.ModulesDir "Logging.psm1"),
+        (Join-Path $Config.PersistentModulesDir "Logging.psm1")
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidatePaths) {
+        if (-not (Test-Path $candidate)) { continue }
+        try {
+            Import-Module $candidate -Force -Global -DisableNameChecking -ErrorAction Stop
+            break
+        } catch {
+            $null
+        }
+    }
+
+    return (Get-Command $qualifiedName -ErrorAction SilentlyContinue)
+}
+
 function Initialize-Logging {
+    $optInit = Resolve-LoggingCommand -CommandName "Initialize-Logging"
+    if ($optInit) {
+        try {
+            $script:LogFile = & $optInit -ComponentName "SystemOptimizer" -CustomLogDir $Config.LogDir
+            return
+        } catch {
+            # Fall back to bootstrap logging below.
+            $null
+        }
+    }
+
     if (-not (Test-Path $Config.LogDir)) {
         New-Item -ItemType Directory -Path $Config.LogDir -Force | Out-Null
     }
@@ -480,7 +521,47 @@ PowerShell: $($PSVersionTable.PSVersion)
 
 function Write-Log {
     param([string]$Message, [string]$Type = "INFO")
-    
+
+    $optPath = Resolve-LoggingCommand -CommandName "Get-OptLogPath"
+    if ($optPath) {
+        try {
+            $currentPath = & $optPath
+            if (-not $currentPath) {
+                $optInit = Resolve-LoggingCommand -CommandName "Initialize-Logging"
+                if ($optInit) {
+                    $currentPath = & $optInit -ComponentName "SystemOptimizer" -CustomLogDir $Config.LogDir
+                }
+            }
+            if ($currentPath) {
+                $script:LogFile = $currentPath
+            }
+        } catch {
+            $null
+        }
+    }
+
+    $optWrite = Resolve-LoggingCommand -CommandName "Write-Log"
+    if ($optWrite) {
+        try {
+            & $optWrite -Message $Message -Type $Type
+            return
+        } catch {
+            # Fall back to bootstrap logging below.
+            $null
+        }
+    }
+
+    $optWrite = Resolve-LoggingCommand -CommandName "Write-OptLog"
+    if ($optWrite) {
+        try {
+            & $optWrite -Message $Message -Type $Type
+            return
+        } catch {
+            # Fall back to bootstrap logging below.
+            $null
+        }
+    }
+
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $shortTime = Get-Date -Format "HH:mm:ss"
     
@@ -553,7 +634,8 @@ function Import-OptimizerModules {
     
     if (-not $modulesPath) { return $false }
     
-    $modules = Get-ChildItem -Path $modulesPath -Filter "*.psm1" -ErrorAction SilentlyContinue
+    $modules = Get-ChildItem -Path $modulesPath -Filter "*.psm1" -ErrorAction SilentlyContinue |
+        Sort-Object @{ Expression = { if ($_.BaseName -eq 'Logging') { 0 } else { 1 } } }, Name
     if ($modules.Count -eq 0) {
         Write-Log "No modules found in $modulesPath" "WARNING"
         return $false
@@ -747,7 +829,7 @@ $script:FunctionModuleMap = @{
     'Get-WifiPasswords' = 'Utilities'
     'Test-OptimizationStatus' = 'Utilities'
     'Show-LogViewer' = 'Utilities'
-    'Write-Log' = 'Utilities'
+    'Write-Log' = 'Logging'
     'Set-ConsoleSize' = 'Utilities'
     
     # Backup
