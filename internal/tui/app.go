@@ -99,7 +99,9 @@ type viewState int
 const (
 	stateMenu viewState = iota
 	stateConfirm
-	stateExecuting
+	stateExiting
+	stateRunning
+	stateEntering
 )
 
 type statusMsg struct {
@@ -107,13 +109,20 @@ type statusMsg struct {
 	err  error
 }
 
+type startPSMsg struct {
+	item MenuItem
+}
+
+type altScreenMsg struct{ entering bool }
+
 type App struct {
-	state   viewState
-	cursor  int
-	width   int
-	height  int
-	quit    bool
-	confirm bool
+	state      viewState
+	cursor     int
+	width      int
+	height     int
+	quit       bool
+	confirm    bool
+	pendingItem MenuItem
 
 	mgr      *modules.Manager
 	executor *modules.Executor
@@ -152,6 +161,35 @@ func (m App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
+	case altScreenMsg:
+		if msg.entering {
+			m.state = stateMenu
+			return m, nil
+		}
+		m.state = stateRunning
+		item := m.pendingItem
+		return m, func() tea.Msg { return startPSMsg{item: item} }
+
+	case startPSMsg:
+		path, err := m.mgr.EnsureModule(msg.item.Module)
+		if err != nil {
+			m.state = stateMenu
+			m.status = fmt.Sprintf("Error downloading %s: %v", msg.item.Module, err)
+			m.statusOK = false
+			return m, tea.EnterAltScreen
+		}
+
+		if err := m.executor.RunFunction(path, msg.item.Function); err != nil {
+			m.state = stateMenu
+			m.status = fmt.Sprintf("Error running %s: %v", msg.item.Function, err)
+			m.statusOK = false
+			return m, tea.EnterAltScreen
+		}
+		m.state = stateMenu
+		m.status = fmt.Sprintf("Completed: %s", msg.item.Label)
+		m.statusOK = true
+		return m, tea.EnterAltScreen
+
 	case statusMsg:
 		m.state = stateMenu
 		if msg.err != nil {
@@ -164,7 +202,7 @@ func (m App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.state == stateExecuting {
+		if m.state == stateRunning || m.state == stateExiting || m.state == stateEntering {
 			return m, nil
 		}
 		return m.handleKey(msg)
@@ -213,9 +251,10 @@ func (m App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.state == stateConfirm {
 			if m.confirm {
-				m.state = stateExecuting
+				m.state = stateExiting
 				item := menuItems[m.cursor]
-				return m, m.executeModule(item)
+				m.pendingItem = item
+				return m, tea.ExitAltScreen
 			}
 			m.state = stateMenu
 			return m, nil
@@ -226,9 +265,10 @@ func (m App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "y":
 		if m.state == stateConfirm && m.confirm {
-			m.state = stateExecuting
+			m.state = stateExiting
 			item := menuItems[m.cursor]
-			return m, m.executeModule(item)
+			m.pendingItem = item
+			return m, tea.ExitAltScreen
 		}
 
 	case "n":
@@ -239,20 +279,6 @@ func (m App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-func (m App) executeModule(item MenuItem) tea.Cmd {
-	return func() tea.Msg {
-		path, err := m.mgr.EnsureModule(item.Module)
-		if err != nil {
-			return statusMsg{err: fmt.Errorf("download %s: %w", item.Module, err)}
-		}
-
-		if err := m.executor.RunFunction(path, item.Function); err != nil {
-			return statusMsg{err: fmt.Errorf("run %s: %w", item.Function, err)}
-		}
-		return statusMsg{text: fmt.Sprintf("Completed: %s", item.Label)}
-	}
 }
 
 func (m App) View() string {
@@ -312,6 +338,11 @@ func (m App) View() string {
 	}
 
 	s += helpStyle.Render("  [?] Help  |  [W] Warning  |  j/k: navigate  |  enter: select  |  q: quit")
+
+	if m.state == stateRunning {
+		s += "\n\n  Launching PowerShell...\n"
+		s += "  (interact with the PowerShell menu, then return here)\n"
+	}
 
 	return s
 }
