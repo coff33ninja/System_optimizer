@@ -1,35 +1,31 @@
-# System Optimizer 🛠️
+# System Optimizer
 
-A comprehensive Windows 10/11 optimization toolkit - 27 modules, 34 menu options, one EXE.
+A comprehensive Windows 10/11 optimization toolkit - 30 modules, 35 menu options.
 
 > Replaces [AIO](https://github.com/coff33ninja/AIO) (archived) and [NexTool](https://github.com/coff33ninja/NexTool-Windows-Suite) (discontinued).
 
+## Project History
+
+| Phase | Project | Stack |
+|-------|---------|-------|
+| 1st Gen | AIO | Batch scripts |
+| 2nd Gen | NexTool | Python GUI |
+| 3rd Gen | System Optimizer | PowerShell + Go (hybrid) |
+
 ## Quick Start
 
-### Standalone EXE (Recommended)
-
-1. Download [SystemOptimizer.exe](https://github.com/coff33ninja/System_optimizer/releases/latest)
-2. Run as Administrator
-3. Select optimizations from menu
-
 ```powershell
-# Or via PowerShell
-irm "https://github.com/coff33ninja/System_optimizer/releases/latest/download/SystemOptimizer.exe" -OutFile "SystemOptimizer.exe"
+irm "https://raw.githubusercontent.com/coff33ninja/System_Optimizer/main/run_optimization.bat" -OutFile "run_optimization.bat"
+.\run_optimization.bat
 ```
 
-### Script Version
-
-```powershell
-git clone https://github.com/coff33ninja/System_optimizer.git
-cd System_optimizer
-.\Start-SystemOptimizer.ps1
-```
+Requires Windows 10/11, Administrator privileges, and PowerShell 5.1+.
 
 ## Requirements
 
 - Windows 10/11
 - Administrator privileges
-- That's it! (EXE has no dependencies)
+- PowerShell 5.1 or newer (7 recommended if available)
 
 ## Features
 
@@ -39,6 +35,7 @@ cd System_optimizer
 | **Services** | 90+ services, Safe/Aggressive modes |
 | **Bloatware** | 40+ app removal |
 | **Performance** | Registry tweaks, VBS control, network optimization |
+| **Antivirus** | ESET CDN install (6 products), Defender control, AV scan |
 | **Tools** | PatchMyPC, Winget, Office Tool, MAS activation |
 | **Advanced** | Hardware detection, profiles, rollback system |
 | **Deployment** | Windows Image Tool, VHD boot, installer |
@@ -55,7 +52,7 @@ Utilities:         [14-15] Wi-Fi Passwords, Verify Status
 Power & System:    [17-22] Power Plan, ShutUp10, Updates, Drivers, Repair Updates, Defender
 Advanced:          [23-26] Debloat Scripts, WinUtil Sync, UI Tweaks, Image Tool
 Tools:             [27-31] Logs, Backup, Shutdown, VHD Boot, Installer
-Management:        [32-34] Rollback, Hardware, Profiles
+Management:        [32-35] Rollback, Hardware, Profiles, Antivirus
 Safety:            [W] View First-Run Warning Again
 ```
 
@@ -65,6 +62,11 @@ Safety:            [W] View First-Run Warning Again
 - [STRUCTURE.md](docs/STRUCTURE.md) - Project structure & modules
 - [ROADMAP.md](docs/ROADMAP.md) - Implementation status & future plans
 - [CHANGELOG.md](CHANGELOG.md) - Release history
+- [MIGRATION_SPEC.md](docs/MIGRATION_SPEC.md) - Go hybrid architecture spec
+
+## What's Next
+
+Migrating from PowerShell + ps2exe to a Go TUI + PowerShell hybrid. The Go binary handles the menu, progress display, module management, and secure downloads. PowerShell modules stay as `.psm1` files — they own the Windows system administration work. See [MIGRATION_SPEC.md](docs/MIGRATION_SPEC.md) for full architecture.
 
 ## Credits
 
@@ -85,4 +87,4 @@ Provided as-is for educational and personal use.
 
 ---
 
-**Made with ☕ by [coff33ninja](https://github.com/coff33ninja)**
+**Made with [coff33ninja](https://github.com/coff33ninja)**
