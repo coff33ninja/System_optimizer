@@ -5,12 +5,20 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/coff33ninja/System_optimizer/internal/config"
+	"github.com/coff33ninja/System_optimizer/internal/modules"
+	"github.com/coff33ninja/System_optimizer/internal/system"
 )
 
 var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("170")).
+			MarginBottom(1)
+
+	headerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("241")).
 			MarginBottom(1)
 
 	menuStyle = lipgloss.NewStyle().
@@ -25,6 +33,9 @@ var (
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241")).
 			MarginTop(1)
+
+	statusOK = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
+	statusWarn = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 )
 
 type MenuItem struct {
@@ -35,15 +46,35 @@ type MenuItem struct {
 	Admin    bool
 }
 
+type statusMsg struct {
+	text string
+	err  error
+}
+
 type App struct {
 	cursor  int
 	choices []MenuItem
 	width   int
 	height  int
 	quit    bool
+
+	mgr      *modules.Manager
+	executor *modules.Executor
+	psVer    string
+	hasPS7   bool
+	status   string
+	exec     bool
 }
 
 func NewApp() App {
+	psVer, _ := system.DetectPSVersion()
+	hasPS7 := system.HasPS7()
+
+	mgr := modules.NewManager(config.ModulesDir)
+	mgr.Init()
+
+	executor := modules.NewExecutor(mgr.FindPowershell())
+
 	return App{
 		choices: []MenuItem{
 			{ID: "run-all", Label: "Run ALL Optimizations", Module: "Core", Function: "Start-AllOptimization"},
@@ -79,6 +110,10 @@ func NewApp() App {
 			{ID: "hardware", Label: "Hardware Detection", Module: "Hardware", Function: "Show-HardwareSummary"},
 			{ID: "profiles", Label: "Optimization Profiles", Module: "Profiles", Function: "Show-ProfileMenu"},
 		},
+		mgr:      mgr,
+		executor: executor,
+		psVer:    psVer,
+		hasPS7:   hasPS7,
 	}
 }
 
@@ -89,6 +124,9 @@ func (m App) Init() tea.Cmd {
 func (m App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.exec {
+			return m, nil
+		}
 		switch msg.String() {
 		case "ctrl+c", "q":
 			m.quit = true
@@ -102,14 +140,35 @@ func (m App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case "enter":
-		choice := m.choices[m.cursor]
-			return m, tea.Printf("Selected: %s (%s)\n", choice.Label, choice.Module)
+			choice := m.choices[m.cursor]
+			return m, m.executeModule(choice)
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case statusMsg:
+		m.exec = false
+		if msg.err != nil {
+			m.status = fmt.Sprintf("Error: %v", msg.err)
+		} else {
+			m.status = msg.text
+		}
 	}
 	return m, nil
+}
+
+func (m App) executeModule(item MenuItem) tea.Cmd {
+	return func() tea.Msg {
+		path, err := m.mgr.EnsureModule(item.Module)
+		if err != nil {
+			return statusMsg{err: fmt.Errorf("download %s: %w", item.Module, err)}
+		}
+
+		if err := m.executor.RunFunction(path, item.Function); err != nil {
+			return statusMsg{err: fmt.Errorf("run %s: %w", item.Function, err)}
+		}
+		return statusMsg{text: fmt.Sprintf("Completed: %s", item.Label)}
+	}
 }
 
 func (m App) View() string {
@@ -117,8 +176,18 @@ func (m App) View() string {
 		return ""
 	}
 
-	s := titleStyle.Render("SYSTEM OPTIMIZER v" + "2.0.0-dev")
-	s += "\n"
+	arch := system.DetectArch()
+	header := fmt.Sprintf("SYSTEM OPTIMIZER v2.0.0-dev  |  %s  |  PS %s", arch, m.psVer)
+	if m.hasPS7 {
+		header += "  |  PS7 available"
+	}
+
+	s := titleStyle.Render(header) + "\n"
+
+	if m.status != "" {
+		s += statusOK.Render(m.status) + "\n"
+		m.status = ""
+	}
 
 	for i, choice := range m.choices {
 		cursor := "  "
