@@ -1,4 +1,13 @@
-# Changelog
+﻿# Changelog
+
+## [1.0.1] - 2026-07-09
+
+Add Antivirus Management module with ESET direct CDN installation, architecture auto-detection, and system AV scanning
+### Changes
+- Merge pull request #1 from coff33ninja/codex/implement-features-for-todo
+- Document first-run warning menu and run option
+- Add menu and CLI entry to re-open first-run warning
+- feat(warning): add first-run warning system for user safety
 
 All notable changes to System Optimizer will be documented in this file.
 
@@ -11,7 +20,7 @@ This release represents a significant milestone in code quality, documentation, 
 ### PowerShell Standards Compliance
 - **PSScriptAnalyzer Compliance** - Full audit and fix of all analyzer warnings
   - Fixed 8 unapproved verb usages across Services, Utilities, and Shutdown modules
-  - Fixed automatic variable conflict (`$profile` → `$wifiProfile`)
+  - Fixed automatic variable conflict (`$profile` â†’ `$wifiProfile`)
   - Added `[CmdletBinding(SupportsShouldProcess)]` to state-changing functions
   - All functions now use Microsoft-approved PowerShell verbs
 
@@ -28,7 +37,7 @@ This release represents a significant milestone in code quality, documentation, 
   - **Maintenance Tools** sub-menu consolidates 5 items: System Maintenance, Disk Cleanup, Reset Group Policy, Reset WMI, Repair Windows Updates
   - **Network Tools** sub-menu consolidates 2 items: Network Optimizations, Reset Network
   - Main menu reduced from 38 to 34 items for cleaner UI
-  - Sequential renumbering of all menu items (fixed gaps: 31-38 → 27-34)
+  - Sequential renumbering of all menu items (fixed gaps: 31-38 â†’ 27-34)
   - Two-column layout maintained for compact display
 
 ### Help System Modularization
@@ -105,8 +114,8 @@ This release represents a significant milestone in code quality, documentation, 
 - 8 unapproved verbs fixed
 - 4 Invoke-Expression calls hardened
 - 25+ commits since v1.0.0
-- Menu items: 38 → 34 (optimized)
-- Function count: 196+ → 223+
+- Menu items: 38 â†’ 34 (optimized)
+- Function count: 196+ â†’ 223+
 
 ## [1.0.0] - 2025-12-23
 
@@ -117,7 +126,7 @@ This release represents a significant milestone in code quality, documentation, 
 ### PowerShell Standards Compliance
 - **PSScriptAnalyzer Compliance** - Full audit and fix of all analyzer warnings
   - Fixed 8 unapproved verb usages across Services, Utilities, and Shutdown modules
-  - Fixed automatic variable conflict (`$profile` → `$wifiProfile`)
+  - Fixed automatic variable conflict (`$profile` â†’ `$wifiProfile`)
   - Added `[CmdletBinding(SupportsShouldProcess)]` to state-changing functions
   - All functions now use Microsoft-approved PowerShell verbs
 
@@ -178,7 +187,7 @@ This release represents a significant milestone in code quality, documentation, 
 
 ## [1.0.0] - 2025-12-23
 
-### Initial Release 🎉
+### Initial Release ðŸŽ‰
 
 System Optimizer is a comprehensive Windows 10/11 optimization toolkit that consolidates features from AIO, NexTool, and WinUtil into a modular PowerShell solution.
 
@@ -240,3 +249,4 @@ System Optimizer is a comprehensive Windows 10/11 optimization toolkit that cons
 - [Snappy Driver Installer](https://sdi-tool.org/)
 - [massgravel/MAS](https://github.com/massgravel/Microsoft-Activation-Scripts)
 - [YerongAI/Office-Tool](https://github.com/YerongAI/Office-Tool)
+

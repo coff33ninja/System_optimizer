@@ -244,7 +244,7 @@ function Show-MenuHelp {
         $null = [System.Console]::ReadKey($true)
     } else {
         Write-Host "  Options: " -ForegroundColor Gray -NoNewline
-        Write-Host "[1-38]" -ForegroundColor Cyan -NoNewline
+        Write-Host "[1-39]" -ForegroundColor Cyan -NoNewline
         Write-Host " View Item | " -ForegroundColor Gray -NoNewline
         Write-Host "[Enter]" -ForegroundColor Cyan -NoNewline
         Write-Host " Return to Menu" -ForegroundColor Gray
@@ -253,7 +253,7 @@ function Show-MenuHelp {
         
         $choice = Read-Host
         
-        if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le 38) {
+        if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le 39) {
             Show-MenuHelp -MenuNumber $choice
         }
     }
@@ -344,6 +344,7 @@ RUN OPTIONS (-RunOption):
     reset-network      Reset all network settings to defaults
     repair-updates     Repair broken Windows Update components
     defender           Manage Windows Defender settings
+    antivirus          Antivirus management menu (ESET direct CDN, Defender config)
     debloat-all        Remove ALL pre-installed apps (aggressive)
     winutil-services   Apply ChrisTitusTech WinUtil service configurations
     privacy            Advanced privacy tweaks and data collection controls
@@ -420,6 +421,7 @@ MENU NAVIGATION:
     [29] Shutdown Options       [30] VHD Native Boot
     [31] Windows Installer      [32] Undo/Rollback Center
     [33] Hardware Detection     [34] Optimization Profiles
+    [35] Antivirus Management
 
 FIRST TIME SETUP:
   1. Ensure you're running as Administrator

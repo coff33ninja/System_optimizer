@@ -189,6 +189,22 @@ Multiple package managers:
 | Network | Wireshark, Nmap |
 | Privacy | BleachBit, Eraser |
 
+### [35] Antivirus Management
+Dedicated antivirus management with ESET direct CDN installation:
+
+**ESET Products (Direct CDN Download):**
+- Auto-detects system architecture (x64 / ARM64 / x86)
+- Downloads offline installer directly from download.eset.com
+- 6 ESET products: NOD32, Internet Security, Smart Security Premium, Security Ultimate, Small Business, Safe Server
+- Product comparison table with feature matrix
+- Replaces unreliable winget-based installation
+
+**Other Options:**
+- Windows Defender configuration (enable/disable/exclusions)
+- Malwarebytes anti-malware installation
+- System AV scan (detects installed antivirus products, warns on conflicts)
+- Routes to Security Tools submenu for additional tools
+
 **Chocolatey:**
 - Install Chocolatey package manager
 - Essential apps bundle

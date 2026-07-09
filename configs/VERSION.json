@@ -1,12 +1,14 @@
 ﻿{
-    "Version":  "1.0.0",
-    "LastUpdated":  "2025-12-23T19:41:52.6924220+02:00",
+    "Version":  "1.0.1",
+    "LastUpdated":  "2026-07-09T11:37:35.1025228+02:00",
     "Modules":  {
+                    "Antivirus":  "1.0.0",
                     "Backup":  "1.0.0",
                     "Bloatware":  "1.0.0",
                     "Core":  "1.0.0",
                     "Drivers":  "1.0.0",
                     "Hardware":  "1.0.0",
+                    "Help":  "1.0.0",
                     "ImageTool":  "1.0.0",
                     "Installer":  "1.0.0",
                     "Logging":  "1.0.0",
@@ -28,6 +30,7 @@
                     "Utilities":  "1.0.0",
                     "VBS":  "1.0.0",
                     "VHDDeploy":  "1.0.0",
+                    "Warning":  "1.0.0",
                     "WindowsUpdate":  "1.0.0"
                 }
 }

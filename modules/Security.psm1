@@ -320,7 +320,7 @@ function Install-SecurityTools {
         Write-Host "======================================" -ForegroundColor Cyan
         Write-Host ""
         Write-Host "  Antivirus Solutions:" -ForegroundColor Gray
-        Write-Host "  [1] ESET NOD32 Antivirus (Premium)" -ForegroundColor Red
+        Write-Host "  [1] ESET / Antivirus Solutions (Opens Antivirus Menu)" -ForegroundColor Red
         Write-Host "  [2] Windows Defender (Enable/Configure)" -ForegroundColor Green
         Write-Host ""
         Write-Host "  Anti-Malware Tools:" -ForegroundColor Gray
@@ -345,7 +345,13 @@ function Install-SecurityTools {
         $choice = Read-Host "Select security tool to install"
 
         switch ($choice) {
-            "1" { Install-SingleSecurityTool -PackageId "ESET.Nod32" -Name "ESET NOD32 Antivirus" }
+            "1" { 
+                if (Get-Command 'Show-AntivirusMenu' -ErrorAction SilentlyContinue) {
+                    Show-AntivirusMenu
+                } else {
+                    Install-SingleSecurityTool -PackageId "ESET.Nod32" -Name "ESET NOD32 Antivirus"
+                }
+            }
             "2" { Enable-WindowsDefender }
             "3" { Install-SingleSecurityTool -PackageId "Malwarebytes.Malwarebytes" -Name "Malwarebytes" }
             "4" { Install-SingleSecurityTool -PackageId "Malwarebytes.AdwCleaner" -Name "AdwCleaner" }

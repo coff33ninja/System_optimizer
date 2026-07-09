@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # Modular Windows 10/11 Optimization Toolkit
 # Run: .\Start-SystemOptimizer.ps1
 # ============================================================================
@@ -55,7 +55,7 @@ if ([string]::IsNullOrEmpty($PSScriptRoot) -and (Test-Path ".\modules")) {
 }
 
 $script:Config = @{
-    Version = "1.0.0"
+    Version = "1.0.1"
     Root = $scriptRoot
     ModulesDir = if ($isEmbeddedEXE) { ".\modules" } else { "$scriptRoot\modules" }
     LogDir = "C:\System_Optimizer\Logs"
@@ -309,10 +309,11 @@ function Update-ModulesFromGitHub {
     try {
         New-Item -ItemType Directory -Path $TargetPath -Force | Out-Null
         
-        $moduleList = @('Backup','Bloatware','Core','Drivers','Hardware','Help','ImageTool','Installer',
-                       'Logging','Maintenance','Network','OneDrive','Power','Privacy','Profiles',
-                       'Registry','Rollback','Security','Services','Shutdown','Software','Tasks',
-                       'Telemetry','UITweaks','Utilities','VBS','VHDDeploy','Warning','WindowsUpdate')
+        $moduleList = @('Antivirus','Backup','Bloatware','Core','Drivers','Hardware','Help','ImageTool',
+                       'Installer','Logging','Maintenance','Network','OneDrive','Power','Privacy',
+                       'Profiles','Registry','Rollback','Security','Services','Shutdown','Software',
+                       'Tasks','Telemetry','UITweaks','Utilities','VBS','VHDDeploy','Warning',
+                       'WindowsUpdate')
         
         Write-Host "[*] Downloading modules from GitHub (v$Version)..." -ForegroundColor Yellow
         $downloaded = 0
@@ -431,6 +432,13 @@ $script:FunctionModuleMap = @{
     # Security
     'Set-DefenderControl' = 'Security'
     'Enable-WindowsDefender' = 'Security'
+    
+    # Antivirus
+    'Show-AntivirusMenu' = 'Antivirus'
+    'Show-EsetMenu' = 'Antivirus'
+    'Install-EsetProduct' = 'Antivirus'
+    'Get-InstalledAvProducts' = 'Antivirus'
+    'Get-SystemArch' = 'Antivirus'
     
     # Software
     'Start-PatchMyPC' = 'Software'
@@ -764,6 +772,9 @@ function Show-MainMenu {
     Write-MenuItemCompact "22" "Defender Control" 'Set-DefenderControl'
     Write-Host ""
     
+    Write-MenuItemCompact "35" "Antivirus" 'Show-AntivirusMenu'
+    Write-Host ""
+    
     Write-MenuItemCompact "23" "Full Debloat" 'DebloatAll'
     Write-Host ""
     
@@ -829,6 +840,7 @@ function Start-MainMenu {
             "32" { Invoke-OptFunction 'Show-RollbackMenu' }          # Rollback.psm1
             "33" { Invoke-OptFunction 'Show-HardwareSummary' }       # Hardware.psm1
             "34" { Invoke-OptFunction 'Show-ProfileMenu' }           # Profiles.psm1
+            "35" { Invoke-OptFunction 'Show-AntivirusMenu' }         # Antivirus.psm1
             "W"  { Invoke-OptFunction 'Show-FirstRunWarning' }
             "w"  { Invoke-OptFunction 'Show-FirstRunWarning' }
             "U"  { Update-SystemOptimizer }
@@ -949,6 +961,7 @@ if ($RunOption) {
         'rollback' = 'Show-RollbackMenu'
         'hardware' = 'Show-HardwareSummary'
         'profiles' = 'Show-ProfileMenu'
+        'antivirus' = 'Show-AntivirusMenu'
         'warning' = 'Show-FirstRunWarning'
         
         # Deployment Tools
